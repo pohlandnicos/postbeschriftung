@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Dropzone } from '@/components/Dropzone';
 import { ResultCard } from '@/components/ResultCard';
 import { processPdf } from '@/lib/apiClient';
+import { renderFirstPagePng } from '@/lib/pdfRender';
 import type { ProcessResult } from '@/lib/types';
 
 export default function Page() {
@@ -14,7 +15,8 @@ export default function Page() {
     setError(null);
     setResult(null);
     try {
-      const r = await processPdf(file);
+      const page1 = await renderFirstPagePng(file);
+      const r = await processPdf(file, page1);
       setResult(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unbekannter Fehler');

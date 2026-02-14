@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import pdfParse from 'pdf-parse/lib/pdf-parse';
+import OpenAI from 'openai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,15 @@ type ProcessResult = {
     building: number;
   };
   debug?: Record<string, unknown>;
+};
+
+type VisionExtract = {
+  doc_type?: string;
+  vendor?: string;
+  amount?: number | null;
+  currency?: string;
+  date?: string | null;
+  building_candidate?: string | null;
 };
 
 function getTmpDir() {
@@ -336,10 +346,83 @@ function buildFilename(fields: {
   return name;
 }
 
+function parseNumberMaybe(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const cleaned = v
+      .replace(/€/g, '')
+      .replace(/EUR/gi, '')
+      .replace(/[^0-9.,\-]/g, '')
+      .trim();
+    if (!cleaned) return null;
+    const normalized = cleaned.includes(',')
+      ? cleaned.replace(/\./g, '').replace(',', '.')
+      : cleaned;
+    const n = Number.parseFloat(normalized);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+async function visionExtractFromImage(imageBytes: Uint8Array): Promise<VisionExtract> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {};
+  }
+
+  const client = new OpenAI({ apiKey });
+  const b64 = Buffer.from(imageBytes).toString('base64');
+
+  const prompt =
+    'Du extrahierst aus einer deutschen Rechnung/Schlussrechnung Felder als JSON. ' +
+    'Gib NUR gültiges JSON zurück, ohne Markdown. Felder: ' +
+    '{ doc_type, vendor, amount, currency, date, building_candidate }. ' +
+    'doc_type z.B. Rechnung/Angebot/Lieferschein/Dokument. ' +
+    'amount als Zahl (deutsches Format erkannt), currency meist EUR. ' +
+    'date als ISO YYYY-MM-DD falls erkennbar. building_candidate: Adresse/WEG/Verbrauchsstelle/Objekt-Text.';
+
+  const resp = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          {
+            type: 'image_url',
+            image_url: { url: `data:image/png;base64,${b64}` }
+          }
+        ]
+      }
+    ]
+  });
+
+  const content = resp.choices?.[0]?.message?.content ?? '';
+  let obj: any = {};
+  try {
+    obj = JSON.parse(content);
+  } catch {
+    const m = content.match(/\{[\s\S]*\}/);
+    if (m?.[0]) obj = JSON.parse(m[0]);
+  }
+
+  return {
+    doc_type: typeof obj.doc_type === 'string' ? obj.doc_type : undefined,
+    vendor: typeof obj.vendor === 'string' ? obj.vendor : undefined,
+    amount: parseNumberMaybe(obj.amount),
+    currency: typeof obj.currency === 'string' ? obj.currency : undefined,
+    date: typeof obj.date === 'string' ? obj.date : null,
+    building_candidate:
+      typeof obj.building_candidate === 'string' ? obj.building_candidate : null
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
     const file = form.get('file');
+    const page1 = form.get('page1');
 
     if (!file || !(file instanceof File)) {
       return new NextResponse('Missing file', { status: 400 });
@@ -360,7 +443,35 @@ export async function POST(req: Request) {
 
     const vendorMap = await loadVendorMap();
     const objects = await loadObjects();
-    const fields = extractFields(text, vendorMap);
+
+    const textLen = text.trim().length;
+    let usedOpenAI = false;
+
+    let fields = extractFields(text, vendorMap);
+    const canUseOpenAI = Boolean(process.env.OPENAI_API_KEY);
+
+    if (textLen < 200 && page1 instanceof File && canUseOpenAI) {
+      const imgBytes = new Uint8Array(await page1.arrayBuffer());
+      const v = await visionExtractFromImage(imgBytes);
+      usedOpenAI = true;
+
+      fields = {
+        ...fields,
+        doc_type: v.doc_type ?? fields.doc_type,
+        vendor: v.vendor ?? fields.vendor,
+        amount: v.amount ?? fields.amount,
+        currency: v.currency ?? fields.currency,
+        date: v.date ?? fields.date,
+        building_candidate: v.building_candidate ?? fields.building_candidate,
+        confidence: {
+          doc_type: v.doc_type ? 0.85 : fields.confidence.doc_type,
+          vendor: v.vendor ? 0.85 : fields.confidence.vendor,
+          amount: typeof v.amount === 'number' ? 0.85 : fields.confidence.amount,
+          building: v.building_candidate ? 0.75 : fields.confidence.building,
+          date: v.date ? 0.75 : (fields.confidence as any).date
+        }
+      };
+    }
     const building_match = matchBuilding(fields.building_candidate, objects);
     const suggested_filename = buildFilename({
       object_number: building_match.object_number,
@@ -386,7 +497,9 @@ export async function POST(req: Request) {
         building: fields.confidence.building
       },
       debug: {
-        text_length: text.trim().length,
+        text_length: textLen,
+        used_openai: usedOpenAI,
+        openai_available: canUseOpenAI,
         build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
         head: text
           .split(/\r?\n/)

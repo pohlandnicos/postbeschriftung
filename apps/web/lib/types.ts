@@ -25,6 +25,8 @@ export type ProcessResult = {
     text_length?: number;
     build_sha?: string;
     head?: string;
+    used_openai?: boolean;
+    openai_available?: boolean;
     [k: string]: unknown;
   };
 };

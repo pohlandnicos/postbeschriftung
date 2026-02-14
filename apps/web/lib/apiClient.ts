@@ -1,8 +1,11 @@
 import type { ProcessResult } from './types';
 
-export async function processPdf(file: File): Promise<ProcessResult> {
+export async function processPdf(file: File, page1Image?: Blob | null): Promise<ProcessResult> {
   const form = new FormData();
   form.append('file', file);
+  if (page1Image) {
+    form.append('page1', page1Image, 'page1.png');
+  }
 
   const res = await fetch('/api/process', {
     method: 'POST',

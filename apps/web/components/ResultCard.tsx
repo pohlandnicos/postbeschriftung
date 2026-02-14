@@ -8,6 +8,9 @@ export function ResultCard({ result }: { result: ProcessResult }) {
   const textLen = typeof result.debug?.text_length === 'number' ? result.debug.text_length : null;
   const buildSha = typeof result.debug?.build_sha === 'string' ? result.debug.build_sha : '';
   const head = typeof result.debug?.head === 'string' ? result.debug.head : '';
+  const usedOpenAI = typeof result.debug?.used_openai === 'boolean' ? result.debug.used_openai : false;
+  const openaiAvailable =
+    typeof result.debug?.openai_available === 'boolean' ? result.debug.openai_available : false;
 
   return (
     <div
@@ -43,6 +46,8 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="currency" v={result.currency} />
         <Row k="date" v={result.date ?? ''} />
         <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
+        <Row k="openai_available" v={openaiAvailable ? 'true' : 'false'} />
+        <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
         <Row k="build_sha" v={buildSha} />
         <Row
           k="building"
