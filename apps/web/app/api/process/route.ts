@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse/lib/pdf-parse';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type ProcessResult = {
   file_id: string;
