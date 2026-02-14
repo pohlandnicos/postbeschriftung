@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import pdfParse from 'pdf-parse';
 
 export const runtime = 'nodejs';
 
@@ -112,30 +113,17 @@ async function loadVendorMap() {
     const raw = await fs.readFile(getDataPath('vendor_map.json'), 'utf8');
     return JSON.parse(raw) as Record<string, string>;
   } catch {
-    try {
-      const raw = await fs.readFile(getDataPath(path.join('..', 'apps', 'web', 'data', 'vendor_map.json')), 'utf8');
-      return JSON.parse(raw) as Record<string, string>;
-    } catch {
-      return {};
-    }
+    return {};
   }
 }
 
 async function loadObjects() {
-  const candidates = [
-    getDataPath('objects.csv'),
-    path.join(process.cwd(), 'data', 'objects.csv'),
-    path.join(process.cwd(), 'apps', 'web', 'data', 'objects.csv')
-  ];
-  for (const p of candidates) {
-    try {
-      const raw = await fs.readFile(p, 'utf8');
-      return parseObjectsCsv(raw);
-    } catch {
-      // ignore
-    }
+  try {
+    const raw = await fs.readFile(getDataPath('objects.csv'), 'utf8');
+    return parseObjectsCsv(raw);
+  } catch {
+    return [];
   }
-  return [];
 }
 
 function extractFields(text: string, vendorMap: Record<string, string>) {
@@ -328,7 +316,6 @@ export async function POST(req: Request) {
 
     const id = crypto.randomUUID();
 
-    const pdfParse = (await import('pdf-parse')).default as (data: Uint8Array) => Promise<{ text: string }>;
     const parsed = await pdfParse(bytes);
     const text = (parsed?.text ?? '').toString();
 
