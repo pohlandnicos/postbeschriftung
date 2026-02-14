@@ -1,8 +1,10 @@
 {
   "version": 2,
+  "installCommand": "npm install --prefix apps/web",
+  "buildCommand": "npm run build --prefix apps/web",
   "builds": [
     {
-      "src": "apps/web/package.json",
+      "src": "apps/web/next.config.mjs",
       "use": "@vercel/next"
     }
   ]
