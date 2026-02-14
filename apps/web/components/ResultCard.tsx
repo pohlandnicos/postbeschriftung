@@ -6,6 +6,8 @@ export function ResultCard({ result }: { result: ProcessResult }) {
   const score = result.building_match?.score ?? null;
   const lowBuilding = score !== null && score < 90;
   const textLen = typeof result.debug?.text_length === 'number' ? result.debug.text_length : null;
+  const buildSha = typeof result.debug?.build_sha === 'string' ? result.debug.build_sha : '';
+  const head = typeof result.debug?.head === 'string' ? result.debug.head : '';
 
   return (
     <div
@@ -41,6 +43,7 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="currency" v={result.currency} />
         <Row k="date" v={result.date ?? ''} />
         <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
+        <Row k="build_sha" v={buildSha} />
         <Row
           k="building"
           v={
@@ -50,6 +53,7 @@ export function ResultCard({ result }: { result: ProcessResult }) {
           }
         />
         <Row k="suggested_filename" v={result.suggested_filename} />
+        <Row k="head" v={head} />
       </div>
 
       <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>

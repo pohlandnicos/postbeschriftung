@@ -23,6 +23,8 @@ export type ProcessResult = {
   confidence: Confidence;
   debug?: {
     text_length?: number;
+    build_sha?: string;
+    head?: string;
     [k: string]: unknown;
   };
 };

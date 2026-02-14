@@ -147,13 +147,27 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     doc_conf = 0.85;
   }
 
-  let vendor = lines[0] ? lines[0].slice(0, 80) : 'UNK';
-  let vendor_conf = 0.25;
+  let vendor = 'UNK';
+  let vendor_conf = 0.15;
   for (const [k, v] of Object.entries(vendorMap)) {
     if (k.toLowerCase() && head.includes(k.toLowerCase())) {
       vendor = v;
       vendor_conf = 0.85;
       break;
+    }
+  }
+
+  if (vendor === 'UNK') {
+    const companyHints = ['gmbh', 'ag', 'kg', 'ohg', 'gbr', 'e.v.', 'ev', 'stadtwerke', 'energie', 'gas', 'netz'];
+    const pick = lines.slice(0, 30).find((l) => {
+      const ll = l.toLowerCase();
+      if (companyHints.some((h) => ll.includes(h))) return true;
+      if (/^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l)) return true;
+      return false;
+    });
+    if (pick) {
+      vendor = pick.slice(0, 80);
+      vendor_conf = 0.35;
     }
   }
 
@@ -171,13 +185,25 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     return Number.isFinite(v) ? v : null;
   };
 
-  const amountTriggers = ['gesamtbetrag', 'rechnungsbetrag', 'zu zahlen'];
+  const amountTriggers = [
+    'gesamtbetrag',
+    'rechnungsbetrag',
+    'zu zahlen',
+    'zahlbetrag',
+    'endbetrag',
+    'summe',
+    'brutto',
+    'gesamt',
+    'betrag'
+  ];
   const amountCandidates: number[] = [];
   for (const trig of amountTriggers) {
-    const rx = new RegExp(`${trig}[^0-9]{0,40}([0-9]{1,3}(?:\\.[0-9]{3})*,[0-9]{2})`, 'i');
-    const m = rx.exec(text);
-    if (m?.[1]) {
-      const v = parseDeAmount(m[1]);
+    const rx = new RegExp(
+      `${trig}[^0-9]{0,60}([0-9]{1,3}(?:\\.[0-9]{3})*,[0-9]{2})`,
+      'i'
+    );
+    for (const m of text.matchAll(rx)) {
+      const v = m?.[1] ? parseDeAmount(m[1]) : null;
       if (v !== null) amountCandidates.push(v);
     }
   }
@@ -215,7 +241,19 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     }
   }
 
-  const buildingTriggers = ['objekt', 'weg', 'liegenschaft', 'baustelle', 'leistungsort', 'adresse'];
+  const buildingTriggers = [
+    'objekt',
+    'weg',
+    'liegenschaft',
+    'baustelle',
+    'leistungsort',
+    'adresse',
+    'verbrauchsstelle',
+    'lieferstelle',
+    'lieferadresse',
+    'objektnr',
+    'objekt-nr'
+  ];
   let building_candidate: string | null = null;
   let building_conf = 0.15;
   for (let i = 0; i < lines.length; i++) {
@@ -348,7 +386,13 @@ export async function POST(req: Request) {
         building: fields.confidence.building
       },
       debug: {
-        text_length: text.trim().length
+        text_length: text.trim().length,
+        build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+        head: text
+          .split(/\r?\n/)
+          .slice(0, 30)
+          .join(' | ')
+          .slice(0, 500)
       }
     };
     const pdfPath = path.join(dir, `${id}.pdf`);
