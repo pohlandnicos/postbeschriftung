@@ -449,9 +449,11 @@ export async function POST(req: Request) {
 
     let fields = extractFields(text, vendorMap);
     const canUseOpenAI = Boolean(process.env.OPENAI_API_KEY);
+    const page1Received = page1 instanceof File;
+    const page1Size = page1Received ? page1.size : 0;
 
-    if (textLen < 200 && page1 instanceof File && canUseOpenAI) {
-      const imgBytes = new Uint8Array(await page1.arrayBuffer());
+    if (textLen < 200 && page1Received && canUseOpenAI) {
+      const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
       const v = await visionExtractFromImage(imgBytes);
       usedOpenAI = true;
 
@@ -500,6 +502,8 @@ export async function POST(req: Request) {
         text_length: textLen,
         used_openai: usedOpenAI,
         openai_available: canUseOpenAI,
+        page1_received: page1Received,
+        page1_size: page1Size,
         build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
         head: text
           .split(/\r?\n/)

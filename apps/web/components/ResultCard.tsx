@@ -11,6 +11,9 @@ export function ResultCard({ result }: { result: ProcessResult }) {
   const usedOpenAI = typeof result.debug?.used_openai === 'boolean' ? result.debug.used_openai : false;
   const openaiAvailable =
     typeof result.debug?.openai_available === 'boolean' ? result.debug.openai_available : false;
+  const page1Received =
+    typeof result.debug?.page1_received === 'boolean' ? result.debug.page1_received : false;
+  const page1Size = typeof result.debug?.page1_size === 'number' ? result.debug.page1_size : null;
 
   return (
     <div
@@ -47,6 +50,8 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="date" v={result.date ?? ''} />
         <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
         <Row k="openai_available" v={openaiAvailable ? 'true' : 'false'} />
+        <Row k="page1_received" v={page1Received ? 'true' : 'false'} />
+        <Row k="page1_size" v={page1Size === null ? '' : String(page1Size)} />
         <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
         <Row k="build_sha" v={buildSha} />
         <Row
