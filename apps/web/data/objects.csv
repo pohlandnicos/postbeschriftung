@@ -1,0 +1,3 @@
+object_number,building_name,street,zip,city,aliases
+0001,Koernikusstr 5-9,Koernikusstr 5-9,12345,Berlin,Koernikusstr 5-9|Kopernikusstr 5-9|WEG Koernikus
+0002,Musterhaus,Musterweg 1,54321,Hamburg,Musterhaus|WEG Musterhaus
