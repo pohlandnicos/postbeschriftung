@@ -12,11 +12,7 @@ export async function renderFirstPagePng(file: File): Promise<Blob | null> {
 
       const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf');
 
-      if (pdfjs?.GlobalWorkerOptions) {
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-      }
-
-      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer, disableWorker: true });
       const pdf = await loadingTask.promise;
 
       const page = await pdf.getPage(1);
