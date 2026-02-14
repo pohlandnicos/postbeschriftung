@@ -5,6 +5,7 @@ import type { ProcessResult } from '@/lib/types';
 export function ResultCard({ result }: { result: ProcessResult }) {
   const score = result.building_match?.score ?? null;
   const lowBuilding = score !== null && score < 90;
+  const textLen = typeof result.debug?.text_length === 'number' ? result.debug.text_length : null;
 
   return (
     <div
@@ -39,6 +40,7 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="amount" v={result.amount === null ? '' : String(result.amount)} />
         <Row k="currency" v={result.currency} />
         <Row k="date" v={result.date ?? ''} />
+        <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
         <Row
           k="building"
           v={

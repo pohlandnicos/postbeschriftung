@@ -21,4 +21,8 @@ export type ProcessResult = {
   building_match: BuildingMatch;
   suggested_filename: string;
   confidence: Confidence;
+  debug?: {
+    text_length?: number;
+    [k: string]: unknown;
+  };
 };
