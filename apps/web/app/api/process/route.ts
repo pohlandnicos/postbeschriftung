@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export const runtime = 'nodejs';
@@ -29,7 +30,7 @@ type ProcessResult = {
 };
 
 function getTmpDir() {
-  return path.join(process.cwd(), '.tmp');
+  return path.join(os.tmpdir(), 'postbeschriftung');
 }
 
 export async function POST(req: Request) {
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
       return new NextResponse('Only PDF supported', { status: 400 });
     }
 
-    const bytes = Buffer.from(await file.arrayBuffer());
+    const bytes = new Uint8Array(await file.arrayBuffer());
 
     const dir = getTmpDir();
     await fs.mkdir(dir, { recursive: true });
@@ -53,7 +54,11 @@ export async function POST(req: Request) {
     let usedMock = false;
     try {
       const upstreamForm = new FormData();
-      upstreamForm.set('file', new Blob([bytes], { type: 'application/pdf' }), file.name);
+      upstreamForm.set(
+        'file',
+        new Blob([bytes], { type: 'application/pdf' }),
+        file.name
+      );
 
       const upstreamRes = await fetch(`${OCR_SERVICE_URL}/process`, {
         method: 'POST',

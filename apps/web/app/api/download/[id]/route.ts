@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export const runtime = 'nodejs';
 
 function getTmpDir() {
-  return path.join(process.cwd(), '.tmp');
+  return path.join(os.tmpdir(), 'postbeschriftung');
 }
 
 function sanitizeFilename(name: string) {
@@ -27,7 +28,8 @@ export async function GET(
   const metaPath = path.join(dir, `${id}.json`);
 
   try {
-    const pdf = await fs.readFile(pdfPath);
+    const pdfBuf = await fs.readFile(pdfPath);
+    const pdf = new Uint8Array(pdfBuf);
 
     let filename = `${id}.pdf`;
     try {
