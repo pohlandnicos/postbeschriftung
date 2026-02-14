@@ -200,7 +200,7 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
   for (const trig of amountTriggers) {
     const rx = new RegExp(
       `${trig}[^0-9]{0,60}([0-9]{1,3}(?:\\.[0-9]{3})*,[0-9]{2})`,
-      'i'
+      'ig'
     );
     for (const m of text.matchAll(rx)) {
       const v = m?.[1] ? parseDeAmount(m[1]) : null;
