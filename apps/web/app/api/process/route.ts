@@ -138,6 +138,8 @@ async function loadObjects() {
       object_number: r.object_number,
       building_name: r.building_name ?? '',
       street: r.street ?? '',
+      management: r.management ?? '',
+      accounting: r.accounting ?? '',
       aliases: Array.isArray(r.aliases) ? (r.aliases as string[]) : []
     }));
   } catch {
@@ -527,6 +529,11 @@ export async function POST(req: Request) {
     }
     const cleanVendor = sanitizeVendor(fields.vendor);
     const building_match = matchBuilding(fields.building_candidate, objects);
+    const matchedObject = building_match.object_number
+      ? (objects as any[]).find((o) => String(o.object_number) === String(building_match.object_number))
+      : null;
+    const matchedManagement = typeof (matchedObject as any)?.management === 'string' ? (matchedObject as any).management : null;
+    const matchedAccounting = typeof (matchedObject as any)?.accounting === 'string' ? (matchedObject as any).accounting : null;
     const suggested_filename = buildFilename({
       object_number: building_match.object_number,
       date: fields.date,
@@ -594,6 +601,8 @@ export async function POST(req: Request) {
       object_number: result.building_match.object_number,
       matched_label: result.building_match.matched_label,
       match_score: result.building_match.score,
+      management: matchedManagement,
+      accounting: matchedAccounting,
       confidence: result.confidence,
       debug: result.debug ?? null
     });
