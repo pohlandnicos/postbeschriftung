@@ -3,20 +3,21 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ThemeSwitch } from './ThemeSwitch';
-import { SidebarSwitch, type SidebarMode } from './SidebarSwitch';
+import { Switch } from './Switch';
+import { TriSwitch } from './TriSwitch';
 
 export type SidebarProps = {
   // add props here if needed
 };
 
 const Sidebar = () => {
-  const [mode, setMode] = useState<SidebarMode>('expanded');
+  const [collapsed, setCollapsed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const pathname = usePathname();
 
-  const isExpanded = mode === 'expanded' || (mode === 'hover' && hovered);
+  const mode = collapsed ? (hovered ? 'center' : 'right') : 'left';
+  const isExpanded = !collapsed || hovered;
 
   useEffect(() => {
     const saved = window.localStorage.getItem('theme');
@@ -105,12 +106,47 @@ const Sidebar = () => {
 
         <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12, opacity: isExpanded ? 1 : 0.85, transition: 'opacity 0.2s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <ThemeSwitch value={theme} onChange={toggleTheme} />
+            <Switch
+              value={theme === 'dark'}
+              onChange={() => toggleTheme()}
+              leftIcon={
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="4" fill="currentColor" />
+                  <path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M7 7L5.5 5.5M19 19l-1.5-1.5M7 17l-1.5 1.5M19 5l-1.5 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              }
+              rightIcon={
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z" fill="currentColor" />
+                </svg>
+              }
+            />
             {isExpanded && <div style={{ fontSize: 13 }}>{theme === 'dark' ? 'Dunkel' : 'Hell'}</div>}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SidebarSwitch value={mode} onChange={setMode} />
+            <TriSwitch
+              value={mode as 'left' | 'center' | 'right'}
+              onChange={(v) => {
+                setCollapsed(v === 'right');
+                setHovered(v === 'center');
+              }}
+              leftIcon={
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 4l-6 8 6 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              }
+              centerIcon={
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="3" fill="currentColor" />
+                </svg>
+              }
+              rightIcon={
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 20l6-8-6-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              }
+            />
             {isExpanded && <div style={{ fontSize: 13 }}>Sidebar</div>}
           </div>
         </div>
