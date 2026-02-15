@@ -34,6 +34,10 @@ function isoDay(s: string) {
   return s.slice(0, 10);
 }
 
+function utcStartOfDay(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
 function parseRange(params: URLSearchParams): { from: Date | null; to: Date | null; label: string } {
   const range = (params.get('range') ?? '30d') as '7d' | '30d' | '90d' | 'all';
   const fromParam = params.get('from');
@@ -180,12 +184,26 @@ export async function GET(req: Request) {
 
   // series for charts: ensure continuous days for preset ranges
   const now = new Date();
-  const endDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const endDay = utcStartOfDay(now);
   const series: [string, number][] = [];
   if (rangeLabel === '7d' || rangeLabel === '30d' || rangeLabel === '90d') {
     const days = rangeLabel === '7d' ? 7 : rangeLabel === '30d' ? 30 : 90;
     const start = new Date(endDay.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
     for (let t = start.getTime(); t <= endDay.getTime(); t += 24 * 60 * 60 * 1000) {
+      const d = new Date(t).toISOString().slice(0, 10);
+      series.push([d, byDay.get(d) ?? 0]);
+    }
+  } else if (rangeLabel === 'custom' && (from || to)) {
+    const keys = [...byDay.keys()].sort();
+    const fallbackStart = keys.length ? new Date(keys[0] + 'T00:00:00.000Z') : endDay;
+    const fallbackEnd = keys.length ? new Date(keys[keys.length - 1] + 'T00:00:00.000Z') : endDay;
+
+    const startDay = utcStartOfDay(from ?? fallbackStart);
+    const endDayCustom = utcStartOfDay(to ?? fallbackEnd);
+
+    const s = Math.min(startDay.getTime(), endDayCustom.getTime());
+    const e = Math.max(startDay.getTime(), endDayCustom.getTime());
+    for (let t = s; t <= e; t += 24 * 60 * 60 * 1000) {
       const d = new Date(t).toISOString().slice(0, 10);
       series.push([d, byDay.get(d) ?? 0]);
     }
