@@ -1,84 +1,87 @@
 
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { clearHistory, loadHistory } from '@/lib/history';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+type AnalyticsResponse = {
+  meta: {
+    range: string;
+    from: string | null;
+    to: string | null;
+    limited_to: number;
+  };
+  totals: {
+    documents: number;
+    total_pages: number;
+    pages_known: number;
+    unique_objects: number;
+  };
+  facets: {
+    objects: { object_number: string | null; label: string; count: number }[];
+    doc_types: string[];
+    vendors: string[];
+  };
+  top: {
+    by_type: { key: string; count: number }[];
+    by_vendor: { key: string; count: number }[];
+  };
+  series: [string, number][];
+  matrix: { object_number: string | null; label: string; total: number; by_type: Record<string, number> }[];
+  recent: {
+    id: string;
+    created_at: string;
+    suggested_filename: string;
+    vendor: string;
+    doc_type: string;
+    pages: number | null;
+    object_number: string | null;
+  }[];
+};
 
 export default function AnalysisPage() {
-  const [items, setItems] = useState(() => loadHistory());
   const [range, setRange] = useState<'7d' | '30d' | 'all'>('7d');
+  const [objectNumber, setObjectNumber] = useState<string>('');
+  const [docType, setDocType] = useState<string>('');
+  const [vendor, setVendor] = useState<string>('');
+  const [data, setData] = useState<AnalyticsResponse | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const stats = useMemo(() => {
-    const now = Date.now();
-    const windowMs =
-      range === '7d' ? 7 * 24 * 60 * 60 * 1000 : range === '30d' ? 30 * 24 * 60 * 60 * 1000 : Number.POSITIVE_INFINITY;
-    const filtered = items.filter((it) => {
-      const t = Date.parse(it.created_at);
-      if (!Number.isFinite(t)) return range === 'all';
-      return now - t <= windowMs;
-    });
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const run = async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const qs = new URLSearchParams();
+        qs.set('range', range);
+        if (objectNumber) qs.set('object_number', objectNumber);
+        if (docType) qs.set('doc_type', docType);
+        if (vendor) qs.set('vendor', vendor);
 
-    const byType = new Map<string, number>();
-    const byVendor = new Map<string, number>();
-    const byDay = new Map<string, number>();
-
-    let totalPages = 0;
-    let pagesKnown = 0;
-    let usedOpenAI = 0;
-    let withTextLayer = 0;
-
-    for (const it of filtered) {
-      byType.set(it.doc_type || 'Unbekannt', (byType.get(it.doc_type || 'Unbekannt') ?? 0) + 1);
-      byVendor.set(it.vendor || 'UNK', (byVendor.get(it.vendor || 'UNK') ?? 0) + 1);
-
-      const d = it.created_at ? it.created_at.slice(0, 10) : 'unknown';
-      byDay.set(d, (byDay.get(d) ?? 0) + 1);
-
-      if (typeof it.pages === 'number') {
-        totalPages += it.pages;
-        pagesKnown += 1;
+        const res = await fetch(`/api/analytics?${qs.toString()}`, { signal: ctrl.signal });
+        if (!res.ok) throw new Error(await res.text());
+        const json = (await res.json()) as AnalyticsResponse;
+        setData(json);
+      } catch (e) {
+        if ((e as any)?.name === 'AbortError') return;
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        setError(msg);
+      } finally {
+        setBusy(false);
       }
-      if (it.used_openai) usedOpenAI += 1;
-      if ((it.text_length ?? 0) > 200) withTextLayer += 1;
-    }
-
-    const topTypes = [...byType.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const topVendors = [...byVendor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-    const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
-    const utcStartOfDay = (t: number) => {
-      const d = new Date(t);
-      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     };
 
-    const end = utcStartOfDay(now);
-    let start = end;
-    if (range === '7d') start = end - 6 * 24 * 60 * 60 * 1000;
-    if (range === '30d') start = end - 29 * 24 * 60 * 60 * 1000;
-    if (range === 'all') {
-      const times = filtered
-        .map((it) => Date.parse(it.created_at))
-        .filter((t) => Number.isFinite(t))
-        .map((t) => utcStartOfDay(t));
-      start = times.length ? Math.min(...times) : end;
-      start = Math.max(start, end - 59 * 24 * 60 * 60 * 1000);
-    }
+    void run();
+    return () => ctrl.abort();
+  }, [range, objectNumber, docType, vendor]);
 
-    const series: [string, number][] = [];
-    for (let t = start; t <= end; t += 24 * 60 * 60 * 1000) {
-      const k = dayKey(t);
-      series.push([k, byDay.get(k) ?? 0]);
-    }
+  const stats = useMemo(() => {
+    const count = data?.totals.documents ?? 0;
+    const totalPages = data?.totals.total_pages ?? 0;
+    const pagesKnown = data?.totals.pages_known ?? 0;
 
-    const timeSeries: [string, number][] = [];
-    for (let t = start; t <= end; t += 24 * 60 * 60 * 1000) {
-      const k = dayKey(t);
-      const docs = byDay.get(k) ?? 0;
-      timeSeries.push([k, docs * 30]); // 30 seconds per doc
-    }
-
-    const totalTimeSaved = filtered.length * 30; // seconds
+    const totalTimeSaved = count * 30; // seconds
     const totalMinutes = Math.floor(totalTimeSaved / 60);
     const totalHours = Math.floor(totalMinutes / 60);
     const remainingMinutes = totalMinutes % 60;
@@ -89,22 +92,23 @@ export default function AnalysisPage() {
         ? `${totalMinutes}min`
         : `${totalTimeSaved}s`;
 
-    const recent = filtered.slice(0, 15);
+    const timeSeries: [string, number][] = (data?.series ?? []).map(([d, docs]) => [d, docs * 30]);
+    const topTypes = (data?.top.by_type ?? []).slice(0, 8).map((x) => [x.key, x.count] as [string, number]);
+    const topVendors = (data?.top.by_vendor ?? []).slice(0, 8).map((x) => [x.key, x.count] as [string, number]);
+    const recent = (data?.recent ?? []).slice(0, 15);
 
     return {
-      count: filtered.length,
+      count,
       totalPages,
       pagesKnown,
-      usedOpenAI,
-      withTextLayer,
       topTypes,
       topVendors,
-      series,
+      series: data?.series ?? ([] as [string, number][]),
       timeSeries,
       timeLabel,
       recent
     };
-  }, [items, range]);
+  }, [data]);
 
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
@@ -112,10 +116,73 @@ export default function AnalysisPage() {
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Analyse</div>
           <div style={{ fontSize: 13, opacity: 0.75 }}>
-            Dashboard über deine zuletzt verarbeiteten Dateien (lokal im Browser gespeichert).
+            Dashboard über deine verarbeiteten Dateien (Supabase).
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <select
+            value={objectNumber}
+            onChange={(e) => setObjectNumber(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'inherit',
+              fontSize: 12,
+              minWidth: 200
+            }}
+          >
+            <option value="">Alle Gebäude</option>
+            {(data?.facets.objects ?? []).map((o) => (
+              <option key={o.object_number ?? 'none'} value={o.object_number ?? ''}>
+                {(o.object_number ? `#${o.object_number}` : 'Ohne Objekt') + (o.label ? ` — ${o.label}` : '')} ({o.count})
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={docType}
+            onChange={(e) => setDocType(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'inherit',
+              fontSize: 12,
+              minWidth: 170
+            }}
+          >
+            <option value="">Alle Arten</option>
+            {(data?.facets.doc_types ?? []).map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={vendor}
+            onChange={(e) => setVendor(e.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'inherit',
+              fontSize: 12,
+              minWidth: 170
+            }}
+          >
+            <option value="">Alle Lieferanten</option>
+            {(data?.facets.vendors ?? []).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+
           <select
             value={range}
             onChange={(e) => setRange(e.target.value as any)}
@@ -132,8 +199,34 @@ export default function AnalysisPage() {
             <option value="30d">Letzte 30 Tage</option>
             <option value="all">Alles</option>
           </select>
+
+          <button
+            onClick={() => {
+              setObjectNumber('');
+              setDocType('');
+              setVendor('');
+              setRange('7d');
+            }}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid var(--border_soft)',
+              background: 'var(--panel2)',
+              color: 'inherit',
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            Reset
+          </button>
         </div>
       </div>
+
+      {error ? (
+        <div style={{ marginBottom: 12, padding: 12, borderRadius: 12, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', fontSize: 13 }}>
+          {error}
+        </div>
+      ) : null}
 
       <div style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, minHeight: 320 }}>
@@ -143,7 +236,7 @@ export default function AnalysisPage() {
                 <div style={{ fontSize: 12, opacity: 0.75 }}>Dateien</div>
                 <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{busy ? 'Lädt…' : range === 'all' ? 'Alle' : range}</div>
             </div>
             <div style={{ marginTop: 12, flex: 1, minHeight: 0 }}>
               <MiniLineChart series={stats.series} />
@@ -176,7 +269,14 @@ export default function AnalysisPage() {
           {stats.topTypes.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
               {stats.topTypes.map(([k, v]) => (
-                <Row key={k} k={k} v={v} />
+                <Row
+                  key={k}
+                  k={k}
+                  v={v}
+                  onClick={() => {
+                    setDocType((prev) => (prev === k ? '' : k));
+                  }}
+                />
               ))}
             </div>
           ) : (
@@ -188,13 +288,90 @@ export default function AnalysisPage() {
           {stats.topVendors.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
               {stats.topVendors.map(([k, v]) => (
-                <Row key={k} k={k} v={v} />
+                <Row
+                  key={k}
+                  k={k}
+                  v={v}
+                  onClick={() => {
+                    setVendor((prev) => (prev === k ? '' : k));
+                  }}
+                />
               ))}
             </div>
           ) : (
             <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
           )}
         </Panel>
+      </div>
+
+      <div style={{ marginTop: 12, border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Gebäude × Dokument-Art</div>
+
+        {data?.matrix?.length ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--panel2)' }}>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Gebäude</th>
+                  <th style={{ textAlign: 'right', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Gesamt</th>
+                  {(data?.facets.doc_types ?? []).slice(0, 8).map((t) => (
+                    <th key={t} style={{ textAlign: 'right', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>
+                      {t}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.matrix
+                  .slice()
+                  .sort((a, b) => (b.total ?? 0) - (a.total ?? 0))
+                  .slice(0, 25)
+                  .map((row) => {
+                    const key = row.object_number ?? 'none';
+                    return (
+                      <tr key={key} style={{ borderBottom: '1px solid var(--border_soft)' }}>
+                        <td style={{ padding: 10, verticalAlign: 'top', maxWidth: 420 }}>
+                          <div style={{ fontWeight: 700 }}>
+                            {row.object_number ? `#${row.object_number}` : 'Ohne Objekt'}
+                          </div>
+                          {row.label ? <div style={{ fontSize: 12, opacity: 0.75 }}>{row.label}</div> : null}
+                        </td>
+                        <td style={{ padding: 10, textAlign: 'right', fontWeight: 800 }}>{row.total}</td>
+                        {(data?.facets.doc_types ?? []).slice(0, 8).map((t) => {
+                          const v = row.by_type?.[t] ?? 0;
+                          return (
+                            <td key={t} style={{ padding: 10, textAlign: 'right' }}>
+                              <button
+                                disabled={!v}
+                                onClick={() => {
+                                  setObjectNumber(row.object_number ?? '');
+                                  setDocType(t);
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  border: '1px solid var(--border_soft)',
+                                  background: v ? 'var(--panel2)' : 'transparent',
+                                  color: 'inherit',
+                                  cursor: v ? 'pointer' : 'default',
+                                  opacity: v ? 1 : 0.35,
+                                  fontSize: 12
+                                }}
+                              >
+                                {v || '—'}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
+        )}
       </div>
 
       <div style={{ marginTop: 12, border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
@@ -206,7 +383,7 @@ export default function AnalysisPage() {
                 key={it.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 150px 110px 70px',
+                  gridTemplateColumns: '1fr 130px 150px 110px 70px',
                   gap: 10,
                   alignItems: 'baseline',
                   padding: '8px 10px',
@@ -217,6 +394,9 @@ export default function AnalysisPage() {
               >
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 400 }}>
                   {it.suggested_filename}
+                </div>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
+                  {it.object_number ? `#${it.object_number}` : '—'}
                 </div>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
                   {it.vendor || 'UNK'}
@@ -252,9 +432,12 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Row({ k, v }: { k: string; v: number }) {
+function Row({ k, v, onClick }: { k: string; v: number; onClick?: () => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+    <div
+      onClick={onClick}
+      style={{ display: 'flex', justifyContent: 'space-between', gap: 12, cursor: onClick ? 'pointer' : 'default' }}
+    >
       <div style={{ fontSize: 13, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {k}
       </div>
