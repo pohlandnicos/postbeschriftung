@@ -6,19 +6,33 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function AnalysisPage() {
   const [items, setItems] = useState(() => loadHistory());
+  const [range, setRange] = useState<'7d' | '30d' | 'all'>('7d');
 
   const stats = useMemo(() => {
+    const now = Date.now();
+    const windowMs =
+      range === '7d' ? 7 * 24 * 60 * 60 * 1000 : range === '30d' ? 30 * 24 * 60 * 60 * 1000 : Number.POSITIVE_INFINITY;
+    const filtered = items.filter((it) => {
+      const t = Date.parse(it.created_at);
+      if (!Number.isFinite(t)) return range === 'all';
+      return now - t <= windowMs;
+    });
+
     const byType = new Map<string, number>();
     const byVendor = new Map<string, number>();
+    const byDay = new Map<string, number>();
 
     let totalPages = 0;
     let pagesKnown = 0;
     let usedOpenAI = 0;
     let withTextLayer = 0;
 
-    for (const it of items) {
+    for (const it of filtered) {
       byType.set(it.doc_type || 'Unbekannt', (byType.get(it.doc_type || 'Unbekannt') ?? 0) + 1);
       byVendor.set(it.vendor || 'UNK', (byVendor.get(it.vendor || 'UNK') ?? 0) + 1);
+
+      const d = it.created_at ? it.created_at.slice(0, 10) : 'unknown';
+      byDay.set(d, (byDay.get(d) ?? 0) + 1);
 
       if (typeof it.pages === 'number') {
         totalPages += it.pages;
@@ -31,25 +45,52 @@ export default function AnalysisPage() {
     const topTypes = [...byType.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
     const topVendors = [...byVendor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
+    const series = [...byDay.entries()]
+      .filter(([k]) => k !== 'unknown')
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-Math.min(range === '7d' ? 7 : range === '30d' ? 30 : 60, 60));
+
+    const recent = filtered.slice(0, 15);
+
     return {
-      count: items.length,
+      count: filtered.length,
       totalPages,
       pagesKnown,
       usedOpenAI,
       withTextLayer,
       topTypes,
-      topVendors
+      topVendors,
+      series,
+      recent
     };
-  }, [items]);
+  }, [items, range]);
 
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Analyse</div>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>Auswertung deiner zuletzt verarbeiteten Dateien (lokal im Browser gespeichert).</div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>
+            Dashboard über deine zuletzt verarbeiteten Dateien (lokal im Browser gespeichert).
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value as any)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'inherit',
+              fontSize: 12
+            }}
+          >
+            <option value="7d">Letzte 7 Tage</option>
+            <option value="30d">Letzte 30 Tage</option>
+            <option value="all">Alles</option>
+          </select>
           <a
             href="/"
             style={{
@@ -58,7 +99,8 @@ export default function AnalysisPage() {
               borderRadius: 10,
               border: '1px solid var(--border)',
               background: 'transparent',
-              color: 'inherit'
+              color: 'inherit',
+              fontSize: 12
             }}
           >
             Zurück
@@ -67,23 +109,59 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 12,
-          marginBottom: 18
-        }}
-      >
-        <Card title="Dateien" value={String(stats.count)} />
-        <Card title="Seiten (Summe)" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
-        <Card title="OCR genutzt" value={String(stats.usedOpenAI)} />
-        <Card title="Textlayer" value={String(stats.withTextLayer)} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12 }}>
+        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>Verarbeitete Dateien</div>
+              <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <MiniLineChart series={stats.series} />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Kpi title="Dateien" value={String(stats.count)} />
+            <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
+            <Kpi title="OCR" value={String(stats.usedOpenAI)} />
+            <Kpi title="Textlayer" value={String(stats.withTextLayer)} />
+          </div>
+
+          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontWeight: 800 }}>Aktionen</div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearHistory();
+                  setItems([]);
+                }}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255, 120, 120, 0.35)',
+                  background: 'rgba(255, 120, 120, 0.08)',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                Verlauf löschen
+              </button>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+              Hinweis: Analyse basiert auf lokalem Browser-Speicher. Anderer Rechner/Browser hat eigene Daten.
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12 }}>
-        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
-          <div style={{ fontWeight: 800, marginBottom: 10 }}>Dokumenttypen</div>
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+        <Panel title="Dokumenttypen">
           {stats.topTypes.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
               {stats.topTypes.map(([k, v]) => (
@@ -93,10 +171,9 @@ export default function AnalysisPage() {
           ) : (
             <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
           )}
-        </div>
+        </Panel>
 
-        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
-          <div style={{ fontWeight: 800, marginBottom: 10 }}>Lieferanten</div>
+        <Panel title="Lieferanten">
           {stats.topVendors.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
               {stats.topVendors.map(([k, v]) => (
@@ -106,40 +183,60 @@ export default function AnalysisPage() {
           ) : (
             <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
           )}
-        </div>
+        </Panel>
       </div>
 
-      <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ fontSize: 12, opacity: 0.75 }}>
-          Hinweis: Die Analyse basiert auf lokalem Browser-Speicher. Anderer Rechner/Browser hat eigene Daten.
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            clearHistory();
-            setItems([]);
-          }}
-          style={{
-            padding: '8px 10px',
-            borderRadius: 10,
-            border: '1px solid rgba(255, 120, 120, 0.35)',
-            background: 'rgba(255, 120, 120, 0.08)',
-            color: 'inherit',
-            cursor: 'pointer'
-          }}
-        >
-          Verlauf löschen
-        </button>
+      <div style={{ marginTop: 12, border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Letzte Dateien</div>
+        {stats.recent.length ? (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {stats.recent.map((it) => (
+              <div
+                key={it.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 150px 110px 70px',
+                  gap: 10,
+                  alignItems: 'baseline',
+                  padding: '8px 10px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border_soft)',
+                  background: 'var(--panel2)'
+                }}
+              >
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 650 }}>
+                  {it.suggested_filename}
+                </div>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
+                  {it.vendor || 'UNK'}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>{it.doc_type || 'Unbekannt'}</div>
+                <div style={{ fontSize: 12, opacity: 0.75, textAlign: 'right' }}>{typeof it.pages === 'number' ? it.pages : '—'}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
+        )}
       </div>
     </main>
   );
 }
 
-function Card({ title, value }: { title: string; value: string }) {
+function Kpi({ title, value }: { title: string; value: string }) {
   return (
     <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
       <div style={{ fontSize: 12, opacity: 0.75 }}>{title}</div>
       <div style={{ marginTop: 6, fontSize: 22, fontWeight: 800 }}>{value}</div>
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+      <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
+      {children}
     </div>
   );
 }
@@ -151,6 +248,46 @@ function Row({ k, v }: { k: string; v: number }) {
         {k}
       </div>
       <div style={{ fontSize: 13, fontWeight: 800 }}>{v}</div>
+    </div>
+  );
+}
+
+function MiniLineChart({ series }: { series: [string, number][] }) {
+  const w = 640;
+  const h = 180;
+  const pad = 14;
+
+  const values = series.map(([, v]) => v);
+  const max = Math.max(1, ...values);
+
+  const points = series
+    .map(([, v], i) => {
+      const x = pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1);
+      const y = h - pad - (v * (h - pad * 2)) / max;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <div style={{ width: '100%', overflow: 'hidden' }}>
+      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(37, 99, 235, 0.35)" />
+            <stop offset="100%" stopColor="rgba(37, 99, 235, 0.00)" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width={w} height={h} fill="transparent" />
+        <path
+          d={`M ${pad} ${h - pad} L ${points.replaceAll(' ', ' L ')} L ${w - pad} ${h - pad} Z`}
+          fill="url(#lineFill)"
+        />
+        <polyline points={points} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
+      </svg>
+      <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
+        <div>{series[0]?.[0] ?? '—'}</div>
+        <div>{series.at(-1)?.[0] ?? '—'}</div>
+      </div>
     </div>
   );
 }
