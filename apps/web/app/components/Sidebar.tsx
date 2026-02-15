@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export type SidebarProps = {
   // add props here if needed
@@ -106,6 +107,20 @@ const Sidebar = () => {
           </svg>
           {!collapsed && <div>Analyse</div>}
         </Link>
+
+        <div
+          style={{
+            marginTop: 'auto',
+            padding: '10px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            opacity: 0.85
+          }}
+        >
+          <ThemeToggle />
+          {!collapsed && <div>Theme</div>}
+        </div>
       </div>
     </div>
   );
