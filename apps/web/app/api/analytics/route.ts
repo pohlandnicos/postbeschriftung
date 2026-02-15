@@ -15,6 +15,15 @@ type AnalyticsRow = {
   object_number: string | null;
 };
 
+type ObjectFacetRow = {
+  object_number: string;
+  street: string | null;
+  postal_code: string | null;
+  city: string | null;
+  management: string | null;
+  accounting: string | null;
+};
+
 function safeKey(s: unknown, fallback: string) {
   const v = typeof s === 'string' ? s.trim() : '';
   return v || fallback;
@@ -60,13 +69,14 @@ export async function GET(req: Request) {
   const objectNumber = searchParams.get('object_number');
   const docType = searchParams.get('doc_type');
   const vendor = searchParams.get('vendor');
+  const employee = searchParams.get('employee');
 
   const { from, to, label: rangeLabel } = parseRange(searchParams);
 
   // facets
   const objectsRes = await supabase
     .from('objects')
-    .select('object_number, street, postal_code, city')
+    .select('object_number, street, postal_code, city, management, accounting')
     .eq('tenant_id', tenantId)
     .order('object_number', { ascending: true });
 
@@ -75,12 +85,18 @@ export async function GET(req: Request) {
   }
 
   const objectLabelByNumber = new Map<string, string>();
-  for (const o of objectsRes.data ?? []) {
+  const employeesByObject = new Map<string, { management: string | null; accounting: string | null }>();
+  for (const o of (objectsRes.data ?? []) as unknown as ObjectFacetRow[]) {
     const street = typeof o.street === 'string' ? o.street.trim() : '';
     const pc = typeof o.postal_code === 'string' ? o.postal_code.trim() : '';
     const city = typeof o.city === 'string' ? o.city.trim() : '';
     const parts = [street, [pc, city].filter(Boolean).join(' ')].filter(Boolean);
-    objectLabelByNumber.set(String(o.object_number), parts.join(', '));
+    const key = String(o.object_number);
+    objectLabelByNumber.set(key, parts.join(', '));
+    employeesByObject.set(key, {
+      management: typeof o.management === 'string' ? o.management.trim() || null : null,
+      accounting: typeof o.accounting === 'string' ? o.accounting.trim() || null : null
+    });
   }
 
   // documents (bounded)
@@ -102,12 +118,24 @@ export async function GET(req: Request) {
     return new NextResponse(`DB error(documents): ${docsRes.error.message}`, { status: 500 });
   }
 
-  const docs = (docsRes.data ?? []) as AnalyticsRow[];
+  let docs = (docsRes.data ?? []) as AnalyticsRow[];
+
+  if (employee) {
+    const empNorm = employee.trim().toLowerCase();
+    docs = docs.filter((d) => {
+      const obj = d.object_number ? String(d.object_number) : '';
+      const emps = obj ? employeesByObject.get(obj) : null;
+      const mgmt = (emps?.management ?? '').toLowerCase();
+      const acc = (emps?.accounting ?? '').toLowerCase();
+      return mgmt === empNorm || acc === empNorm;
+    });
+  }
 
   const byType = new Map<string, number>();
   const byVendor = new Map<string, number>();
   const byObject = new Map<string, number>();
   const byDay = new Map<string, number>();
+  const byEmployee = new Map<string, number>();
   const matrix = new Map<string, { total: number; byType: Map<string, number> }>();
 
   let totalPages = 0;
@@ -118,9 +146,18 @@ export async function GET(req: Request) {
     const v = safeKey(d.vendor, 'UNK');
     const o = safeKey(d.object_number, '—');
 
+    const objKey = d.object_number ? String(d.object_number) : '';
+    const emps = objKey ? employeesByObject.get(objKey) : null;
+    const employeeNames = [emps?.management, emps?.accounting].filter((x): x is string => typeof x === 'string' && Boolean(x.trim()));
+
     byType.set(t, (byType.get(t) ?? 0) + 1);
     byVendor.set(v, (byVendor.get(v) ?? 0) + 1);
     byObject.set(o, (byObject.get(o) ?? 0) + 1);
+
+    for (const en of employeeNames) {
+      const key = en.trim();
+      byEmployee.set(key, (byEmployee.get(key) ?? 0) + 1);
+    }
 
     const day = d.created_at ? isoDay(d.created_at) : 'unknown';
     byDay.set(day, (byDay.get(day) ?? 0) + 1);
@@ -139,6 +176,7 @@ export async function GET(req: Request) {
   const topTypes = [...byType.entries()].sort((a, b) => b[1] - a[1]);
   const topVendors = [...byVendor.entries()].sort((a, b) => b[1] - a[1]);
   const topObjects = [...byObject.entries()].sort((a, b) => b[1] - a[1]);
+  const topEmployees = [...byEmployee.entries()].sort((a, b) => b[1] - a[1]);
 
   // series for charts: ensure continuous days for preset ranges
   const now = new Date();
@@ -159,6 +197,7 @@ export async function GET(req: Request) {
   // UI facets (sorted)
   const facetDocTypes = [...new Set(topTypes.map(([k]) => k))];
   const facetVendors = [...new Set(topVendors.map(([k]) => k))];
+  const facetEmployees = [...new Set(topEmployees.map(([k]) => k))];
   const facetObjects = topObjects.map(([k, cnt]) => ({
     object_number: k === '—' ? null : k,
     label: k === '—' ? 'Ohne Objekt' : objectLabelByNumber.get(k) ?? '',
@@ -198,11 +237,13 @@ export async function GET(req: Request) {
     facets: {
       objects: facetObjects,
       doc_types: facetDocTypes,
-      vendors: facetVendors
+      vendors: facetVendors,
+      employees: facetEmployees
     },
     top: {
       by_type: topTypes.slice(0, 12).map(([k, v]) => ({ key: k, count: v })),
-      by_vendor: topVendors.slice(0, 12).map(([k, v]) => ({ key: k, count: v }))
+      by_vendor: topVendors.slice(0, 12).map(([k, v]) => ({ key: k, count: v })),
+      by_employee: topEmployees.slice(0, 12).map(([k, v]) => ({ key: k, count: v }))
     },
     series,
     matrix: matrixOut,

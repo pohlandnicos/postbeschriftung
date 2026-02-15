@@ -20,10 +20,12 @@ type AnalyticsResponse = {
     objects: { object_number: string | null; label: string; count: number }[];
     doc_types: string[];
     vendors: string[];
+    employees: string[];
   };
   top: {
     by_type: { key: string; count: number }[];
     by_vendor: { key: string; count: number }[];
+    by_employee: { key: string; count: number }[];
   };
   series: [string, number][];
   matrix: { object_number: string | null; label: string; total: number; by_type: Record<string, number> }[];
@@ -43,6 +45,7 @@ export default function AnalysisPage() {
   const [objectNumber, setObjectNumber] = useState<string>('');
   const [docType, setDocType] = useState<string>('');
   const [vendor, setVendor] = useState<string>('');
+  const [employee, setEmployee] = useState<string>('');
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,7 @@ export default function AnalysisPage() {
         if (objectNumber) qs.set('object_number', objectNumber);
         if (docType) qs.set('doc_type', docType);
         if (vendor) qs.set('vendor', vendor);
+        if (employee) qs.set('employee', employee);
 
         const res = await fetch(`/api/analytics?${qs.toString()}`, { signal: ctrl.signal });
         if (!res.ok) throw new Error(await res.text());
@@ -74,7 +78,7 @@ export default function AnalysisPage() {
 
     void run();
     return () => ctrl.abort();
-  }, [range, objectNumber, docType, vendor]);
+  }, [range, objectNumber, docType, vendor, employee]);
 
   const stats = useMemo(() => {
     const count = data?.totals.documents ?? 0;
@@ -115,9 +119,10 @@ export default function AnalysisPage() {
     if (objectNumber) parts.push(`Objekt #${objectNumber}`);
     if (docType) parts.push(docType);
     if (vendor) parts.push(vendor);
+    if (employee) parts.push(employee);
     parts.push(range === 'all' ? 'Zeitraum: Alles' : range === '7d' ? 'Zeitraum: 7 Tage' : 'Zeitraum: 30 Tage');
     return parts.join(' · ');
-  }, [docType, objectNumber, range, vendor]);
+  }, [docType, objectNumber, range, vendor, employee]);
 
   const objectOptions = useMemo(() => {
     const opts = (data?.facets.objects ?? []).map((o) => ({
@@ -137,6 +142,11 @@ export default function AnalysisPage() {
     const opts = (data?.facets.vendors ?? []).map((v) => ({ value: v, label: v, subLabel: '' }));
     return [{ value: '', label: 'Alle Lieferanten', subLabel: '' }, ...opts];
   }, [data?.facets.vendors]);
+
+  const employeeOptions = useMemo(() => {
+    const opts = (data?.facets.employees ?? []).map((e) => ({ value: e, label: e, subLabel: '' }));
+    return [{ value: '', label: 'Alle Mitarbeiter', subLabel: '' }, ...opts];
+  }, [data?.facets.employees]);
 
   const rangeOptions = useMemo(
     () => [
@@ -178,6 +188,7 @@ export default function AnalysisPage() {
                   setObjectNumber('');
                   setDocType('');
                   setVendor('');
+                  setEmployee('');
                   setRange('7d');
                 }}
                 style={{
@@ -198,13 +209,14 @@ export default function AnalysisPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
               gap: 10
             }}
           >
             <LabeledComboBox label="Gebäude" value={objectNumber} options={objectOptions} onChange={setObjectNumber} placeholder="Gebäude suchen…" />
             <LabeledComboBox label="Dokument-Art" value={docType} options={docTypeOptions} onChange={setDocType} placeholder="Art suchen…" />
             <LabeledComboBox label="Lieferant" value={vendor} options={vendorOptions} onChange={setVendor} placeholder="Lieferant suchen…" />
+            <LabeledComboBox label="Mitarbeiter" value={employee} options={employeeOptions} onChange={setEmployee} placeholder="Mitarbeiter suchen…" />
           </div>
 
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
