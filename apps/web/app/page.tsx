@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Dropzone } from '@/components/Dropzone';
 import { ResultCard } from '@/components/ResultCard';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { processPdf } from '@/lib/apiClient';
 import { renderFirstPagePng } from '@/lib/pdfRender';
 import type { ProcessResult } from '@/lib/types';
@@ -145,7 +146,10 @@ export default function Page() {
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-        <div style={{ fontSize: 22, fontWeight: 800 }}>Postbeschriftung</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>Postbeschriftung</div>
+          <ThemeToggle />
+        </div>
         <div style={{ fontSize: 13, opacity: 0.75 }}>
           Upload PDF, automatische Erkennung (Dokumenttyp/Lieferant/Betrag/Gebäude), Vorschlag Dateiname, Download.
         </div>
