@@ -935,7 +935,7 @@ function DateRangePicker(props: {
                   const isSingle = Boolean(effectiveRange && effectiveRange.start === effectiveRange.end);
 
                   // Vercel-like: no default tile, only hover/range/edges are filled.
-                  // Use half gradients on edges to visually connect the range.
+                  // Start and end should look identical (same pill).
                   let background: string = 'transparent';
                   let backgroundImage: string | undefined = undefined;
                   let border: string = '1px solid transparent';
@@ -946,14 +946,10 @@ function DateRangePicker(props: {
                       background = edgeFill;
                       border = '1px solid rgba(37, 99, 235, 0.55)';
                       radius = 10;
-                    } else if (isStart) {
+                    } else if (isStart || isEnd) {
+                      background = edgeFill;
                       border = '1px solid rgba(37, 99, 235, 0.55)';
                       radius = 10;
-                      backgroundImage = `linear-gradient(90deg, ${edgeFill} 0%, ${edgeFill} 50%, ${rangeFill} 50%, ${rangeFill} 100%)`;
-                    } else if (isEnd) {
-                      border = '1px solid rgba(37, 99, 235, 0.55)';
-                      radius = 10;
-                      backgroundImage = `linear-gradient(90deg, ${rangeFill} 0%, ${rangeFill} 50%, ${edgeFill} 50%, ${edgeFill} 100%)`;
                     } else {
                       // middle range cells as a soft bar
                       background = rangeFill;
