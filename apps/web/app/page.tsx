@@ -267,7 +267,7 @@ export default function Page() {
             view === 'grid'
               ? {
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
                   gap: 12
                 }
               : { display: 'grid', gap: 8 }
@@ -281,10 +281,10 @@ export default function Page() {
 
             const badgeColor = (() => {
               const t = docType.toLowerCase();
-              if (t.includes('rechnung')) return { bg: 'rgba(37, 99, 235, 0.18)', bd: 'rgba(37, 99, 235, 0.35)' };
-              if (t.includes('angebot')) return { bg: 'rgba(34, 197, 94, 0.14)', bd: 'rgba(34, 197, 94, 0.35)' };
-              if (t.includes('lieferschein')) return { bg: 'rgba(245, 158, 11, 0.14)', bd: 'rgba(245, 158, 11, 0.35)' };
-              return { bg: 'rgba(231, 238, 252, 0.06)', bd: 'rgba(231, 238, 252, 0.18)' };
+              if (t.includes('rechnung')) return { bg: 'rgba(37, 99, 235, 0.18)', bd: 'var(--border)' };
+              if (t.includes('angebot')) return { bg: 'rgba(34, 197, 94, 0.14)', bd: 'var(--border)' };
+              if (t.includes('lieferschein')) return { bg: 'rgba(245, 158, 11, 0.14)', bd: 'var(--border)' };
+              return { bg: 'var(--panel2)', bd: 'var(--border)' };
             })();
 
             const card = (
