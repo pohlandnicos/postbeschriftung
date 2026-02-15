@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Dropzone } from '@/components/Dropzone';
 import { ResultCard } from '@/components/ResultCard';
 import { processPdf } from '@/lib/apiClient';
 import { renderFirstPagePng } from '@/lib/pdfRender';
 import type { ProcessResult } from '@/lib/types';
+import JSZip from 'jszip';
 
 type QueueItem = {
   id: string;
@@ -22,6 +23,9 @@ export default function Page() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [concurrency, setConcurrency] = useState(2);
+
+  const doneItems = useMemo(() => items.filter((i) => i.status === 'done' && i.result), [items]);
 
   const previewItem = previewId ? items.find((i) => i.id === previewId) ?? null : null;
 
@@ -34,6 +38,43 @@ export default function Page() {
     });
     setPreviewId((p) => (p === id ? null : p));
   }, []);
+
+  const downloadAllIndividually = useCallback(() => {
+    for (const it of doneItems) {
+      const id = it.result?.file_id;
+      if (!id) continue;
+      const a = document.createElement('a');
+      a.href = `/api/download/${encodeURIComponent(id)}`;
+      a.rel = 'noopener';
+      a.click();
+    }
+  }, [doneItems]);
+
+  const downloadAllAsZip = useCallback(async () => {
+    if (!doneItems.length) return;
+    const zip = new JSZip();
+
+    for (const it of doneItems) {
+      const id = it.result?.file_id;
+      if (!id) continue;
+      const res = await fetch(`/api/download/${encodeURIComponent(id)}`);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const name = it.result?.suggested_filename || `${id}.pdf`;
+      zip.file(name, blob);
+    }
+
+    const out = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(out);
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `postbeschriftung_${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }, [doneItems]);
 
   const clearAll = useCallback(() => {
     setItems((prev) => {
@@ -80,11 +121,21 @@ export default function Page() {
       }));
       setItems((prev) => [...newItems, ...prev]);
 
-      for (const it of newItems) {
-        await processOne(it.id, it.file);
-      }
+      const limit = Math.max(1, Math.min(5, concurrency));
+      let idx = 0;
+
+      const runNext = async (): Promise<void> => {
+        const current = newItems[idx++];
+        if (!current) return;
+        await processOne(current.id, current.file);
+        await runNext();
+      };
+
+      const starters: Promise<void>[] = [];
+      for (let i = 0; i < Math.min(limit, newItems.length); i++) starters.push(runNext());
+      await Promise.all(starters);
     },
-    [processOne]
+    [processOne, concurrency]
   );
 
   return (
@@ -105,6 +156,25 @@ export default function Page() {
               {items.length} Dateien
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Parallel</div>
+                <select
+                  value={concurrency}
+                  onChange={(e) => setConcurrency(Number(e.target.value) || 1)}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(231, 238, 252, 0.18)',
+                    background: 'transparent',
+                    color: 'inherit'
+                  }}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setView('grid')}
@@ -147,6 +217,39 @@ export default function Page() {
               >
                 Alle entfernen
               </button>
+
+              {doneItems.length ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={downloadAllIndividually}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(231, 238, 252, 0.18)',
+                      background: 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Alle einzeln
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadAllAsZip}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(231, 238, 252, 0.18)',
+                      background: 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Alle als ZIP
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -201,9 +304,10 @@ export default function Page() {
                       style={{
                         fontSize: 12,
                         opacity: 0.7,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
                       }}
                     >
                       {it.file.name}
@@ -213,9 +317,10 @@ export default function Page() {
                         marginTop: 6,
                         fontSize: 13,
                         fontWeight: 650,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
                       }}
                     >
                       {name}
