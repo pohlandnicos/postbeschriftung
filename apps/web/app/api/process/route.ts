@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import pdfParse from 'pdf-parse/lib/pdf-parse';
 import OpenAI from 'openai';
+import { getSupabaseAdmin, getTenantId } from '@/lib/supabaseServer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,10 +38,6 @@ type VisionExtract = {
   date?: string | null;
   building_candidate?: string | null;
 };
-
-function getTmpDir() {
-  return path.join(os.tmpdir(), 'postbeschriftung');
-}
 
 function getDataPath(rel: string) {
   return path.join(process.cwd(), 'data', rel);
@@ -476,13 +472,11 @@ export async function POST(req: Request) {
 
     const bytes = new Uint8Array(await file.arrayBuffer());
 
-    const dir = getTmpDir();
-    await fs.mkdir(dir, { recursive: true });
-
     const id = crypto.randomUUID();
 
     const parsed = await pdfParse(bytes);
     const text = (parsed?.text ?? '').toString();
+    const pages = typeof (parsed as any)?.numpages === 'number' ? ((parsed as any).numpages as number) : null;
 
     const vendorMap = await loadVendorMap();
     const objects = await loadObjects();
@@ -560,17 +554,42 @@ export async function POST(req: Request) {
           .slice(0, 500)
       }
     };
-    const pdfPath = path.join(dir, `${id}.pdf`);
-    const metaPath = path.join(dir, `${id}.json`);
 
-    await fs.writeFile(pdfPath, bytes);
-    await fs.writeFile(
-      metaPath,
-      JSON.stringify({ ...result, original_name: file.name }, null, 2),
-      'utf8'
-    );
+    const tenantId = getTenantId();
+    const supabase = getSupabaseAdmin();
+    const storagePath = `original/${result.file_id}.pdf`;
 
-    return NextResponse.json({ ...result, file_id: id });
+    const up = await supabase.storage
+      .from('pdfs')
+      .upload(storagePath, Buffer.from(bytes), { contentType: 'application/pdf', upsert: true });
+    if (up.error) {
+      return new NextResponse(`Storage upload failed: ${up.error.message}`, { status: 500 });
+    }
+
+    const ins = await supabase.from('documents').insert({
+      id: result.file_id,
+      tenant_id: tenantId,
+      user_id: null,
+      original_filename: file.name,
+      suggested_filename: result.suggested_filename,
+      storage_path: storagePath,
+      pages,
+      doc_type: result.doc_type,
+      vendor: result.vendor,
+      amount: result.amount,
+      currency: result.currency,
+      date: result.date,
+      object_number: result.building_match.object_number,
+      matched_label: result.building_match.matched_label,
+      match_score: result.building_match.score,
+      confidence: result.confidence,
+      debug: result.debug ?? null
+    });
+    if (ins.error) {
+      return new NextResponse(`DB insert failed: ${ins.error.message}`, { status: 500 });
+    }
+
+    return NextResponse.json({ ...result, file_id: result.file_id, pages });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     return new NextResponse(msg, { status: 500 });

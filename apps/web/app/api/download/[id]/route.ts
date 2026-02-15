@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { getSupabaseAdmin, getTenantId } from '@/lib/supabaseServer';
 
 export const runtime = 'nodejs';
-
-function getTmpDir() {
-  return path.join(os.tmpdir(), 'postbeschriftung');
-}
 
 function sanitizeFilename(name: string) {
   const cleaned = name
@@ -23,30 +17,38 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
-  const dir = getTmpDir();
-  const pdfPath = path.join(dir, `${id}.pdf`);
-  const metaPath = path.join(dir, `${id}.json`);
 
-  try {
-    const pdfBuf = await fs.readFile(pdfPath);
-    const pdf = new Uint8Array(pdfBuf);
+  const tenantId = getTenantId();
+  const supabase = getSupabaseAdmin();
 
-    let filename = `${id}.pdf`;
-    try {
-      const metaRaw = await fs.readFile(metaPath, 'utf8');
-      const meta = JSON.parse(metaRaw) as { suggested_filename?: string };
-      if (meta.suggested_filename) filename = sanitizeFilename(meta.suggested_filename);
-    } catch {
-      // ignore
-    }
+  const doc = await supabase
+    .from('documents')
+    .select('suggested_filename, storage_path')
+    .eq('tenant_id', tenantId)
+    .eq('id', id)
+    .maybeSingle();
 
-    return new NextResponse(pdf, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`
-      }
-    });
-  } catch {
+  if (doc.error) {
+    return new NextResponse(`DB error: ${doc.error.message}`, { status: 500 });
+  }
+  if (!doc.data?.storage_path) {
     return new NextResponse('Not found', { status: 404 });
   }
+
+  const dl = await supabase.storage.from('pdfs').download(doc.data.storage_path);
+  if (dl.error) {
+    return new NextResponse(`Storage download failed: ${dl.error.message}`, { status: 404 });
+  }
+
+  const buf = new Uint8Array(await dl.data.arrayBuffer());
+  const filename = doc.data.suggested_filename
+    ? sanitizeFilename(doc.data.suggested_filename)
+    : `${id}.pdf`;
+
+  return new NextResponse(buf, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`
+    }
+  });
 }
