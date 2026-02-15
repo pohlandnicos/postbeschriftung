@@ -11,12 +11,15 @@ export type SidebarProps = {
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const pathname = usePathname();
+
+  const isExpanded = !collapsed || hovered;
 
   return (
     <div
       style={{
-        width: collapsed ? 56 : 220,
+        width: isExpanded ? 220 : 56,
         flexShrink: 0,
         borderRight: '1px solid var(--border_soft)',
         background: 'var(--panel)',
@@ -24,35 +27,11 @@ const Sidebar = () => {
         flexDirection: 'column',
         transition: 'width 0.2s ease'
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <div style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {!collapsed && <div style={{ fontSize: 15, fontWeight: 800 }}>Postbeschriftung</div>}
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            marginLeft: collapsed ? 0 : 'auto',
-            padding: '8px 10px',
-            borderRadius: 8,
-            border: '1px solid var(--border_soft)',
-            background: 'var(--panel2)',
-            color: 'inherit',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d={collapsed ? 'M13 19l6-6-6-6M5 19l6-6-6-6' : 'M11 19l-6-6 6-6M19 19l-6-6 6-6'}
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        {isExpanded && <div style={{ fontSize: 15, fontWeight: 800 }}>Postbeschriftung</div>}
       </div>
 
       <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -79,7 +58,7 @@ const Sidebar = () => {
               strokeLinejoin="round"
             />
           </svg>
-          {!collapsed && <div>Neue Post</div>}
+          {isExpanded && <div>Neue Post</div>}
         </Link>
 
         <Link
@@ -105,21 +84,50 @@ const Sidebar = () => {
               strokeLinejoin="round"
             />
           </svg>
-          {!collapsed && <div>Analyse</div>}
+          {isExpanded && <div>Analyse</div>}
         </Link>
 
-        <div
-          style={{
-            marginTop: 'auto',
-            padding: '10px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            opacity: 0.85
-          }}
-        >
-          <ThemeToggle />
-          {!collapsed && <div>Theme</div>}
+        <div style={{ marginTop: 'auto', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div
+            style={{
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              opacity: 0.85
+            }}
+          >
+            <ThemeToggle />
+            {isExpanded && <div>Theme</div>}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border_soft)',
+              background: 'var(--panel2)',
+              color: 'inherit',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              width: '100%'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d={collapsed ? 'M13 19l6-6-6-6M5 19l6-6-6-6' : 'M11 19l-6-6 6-6M19 19l-6-6 6-6'}
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {isExpanded && <div>Sidebar {collapsed ? 'öffnen' : 'schließen'}</div>}
+          </button>
         </div>
       </div>
     </div>
