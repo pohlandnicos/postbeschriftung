@@ -293,7 +293,10 @@ export default function Page() {
                   border: '1px solid var(--border_soft)',
                   borderRadius: 14,
                   padding: 12,
-                  background: 'var(--panel)'
+                  background: 'var(--panel)',
+                  minHeight: view === 'grid' ? 168 : undefined,
+                  display: 'grid',
+                  gridTemplateRows: '1fr auto'
                 }}
               >
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -365,74 +368,119 @@ export default function Page() {
                       {it.status}
                       {it.error ? ` — ${it.error}` : ''}
                     </div>
-
-                    <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewId(it.id)}
-                        style={{
-                          padding: view === 'grid' ? '6px 8px' : '8px 10px',
-                          borderRadius: 12,
-                          border: '1px solid rgba(231, 238, 252, 0.18)',
-                          background: 'transparent',
-                          color: 'inherit',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Vorschau
-                      </button>
-
-                      {downloadHref ? (
-                        <a
-                          href={downloadHref}
-                          style={{
-                            textDecoration: 'none',
-                            padding: view === 'grid' ? '6px 8px' : '8px 10px',
-                            borderRadius: 12,
-                            background: '#2563eb',
-                            color: 'white',
-                            fontWeight: 700
-                          }}
-                        >
-                          Download
-                        </a>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setItems((prev) =>
-                            prev.map((p) => (p.id === it.id ? { ...p, expanded: !p.expanded } : p))
-                          )
-                        }
-                        style={{
-                          padding: view === 'grid' ? '6px 8px' : '8px 10px',
-                          borderRadius: 12,
-                          border: '1px solid rgba(231, 238, 252, 0.18)',
-                          background: 'transparent',
-                          color: 'inherit',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Details
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => removeItem(it.id)}
-                        style={{
-                          padding: view === 'grid' ? '6px 8px' : '8px 10px',
-                          borderRadius: 12,
-                          border: '1px solid rgba(255, 120, 120, 0.35)',
-                          background: 'rgba(255, 120, 120, 0.08)',
-                          color: 'inherit',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Entfernen
-                      </button>
-                    </div>
                   </div>
+                </div>
+
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewId(it.id)}
+                    aria-label="Vorschau"
+                    style={{
+                      width: 34,
+                      height: 32,
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      background: 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </button>
+
+                  {downloadHref ? (
+                    <a
+                      href={downloadHref}
+                      aria-label="Download"
+                      style={{
+                        textDecoration: 'none',
+                        width: 34,
+                        height: 32,
+                        borderRadius: 10,
+                        border: '1px solid rgba(37, 99, 235, 0.35)',
+                        background: 'rgba(37, 99, 235, 0.14)',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M8 11l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M4 21h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </a>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setItems((prev) =>
+                        prev.map((p) => (p.id === it.id ? { ...p, expanded: !p.expanded } : p))
+                      )
+                    }
+                    aria-label="Details"
+                    style={{
+                      width: 34,
+                      height: 32,
+                      borderRadius: 10,
+                      border: '1px solid var(--border)',
+                      background: 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M7 12h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => removeItem(it.id)}
+                    aria-label="Entfernen"
+                    style={{
+                      width: 34,
+                      height: 32,
+                      borderRadius: 10,
+                      border: '1px solid rgba(255, 120, 120, 0.35)',
+                      background: 'rgba(255, 120, 120, 0.08)',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M8 6v-2h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M6 6l1 16h10l1-16" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 </div>
 
                 {it.expanded && it.result ? (
