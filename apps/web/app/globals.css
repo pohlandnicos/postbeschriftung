@@ -2,16 +2,20 @@
   --bg: #0b1220;
   --fg: #e7eefc;
   --border: rgba(231, 238, 252, 0.18);
+  --border_soft: rgba(231, 238, 252, 0.12);
   --panel: rgba(255, 255, 255, 0.02);
   --panel2: rgba(255, 255, 255, 0.03);
+  --muted: rgba(231, 238, 252, 0.75);
 }
 
 html[data-theme='light'] {
   --bg: #f6f8ff;
   --fg: #0b1220;
-  --border: rgba(15, 23, 42, 0.16);
+  --border: rgba(15, 23, 42, 0.22);
+  --border_soft: rgba(15, 23, 42, 0.16);
   --panel: rgba(15, 23, 42, 0.04);
-  --panel2: rgba(15, 23, 42, 0.05);
+  --panel2: rgba(15, 23, 42, 0.06);
+  --muted: rgba(15, 23, 42, 0.72);
 }
 
 html, body {

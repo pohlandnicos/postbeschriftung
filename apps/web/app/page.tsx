@@ -189,7 +189,7 @@ export default function Page() {
                 style={{
                   padding: '8px 10px',
                   borderRadius: 10,
-                  border: '1px solid rgba(231, 238, 252, 0.18)',
+                  border: '1px solid var(--border)',
                   background: view === 'grid' ? 'rgba(37, 99, 235, 0.25)' : 'transparent',
                   color: 'inherit',
                   cursor: 'pointer'
@@ -203,7 +203,7 @@ export default function Page() {
                 style={{
                   padding: '8px 10px',
                   borderRadius: 10,
-                  border: '1px solid rgba(231, 238, 252, 0.18)',
+                  border: '1px solid var(--border)',
                   background: view === 'list' ? 'rgba(37, 99, 235, 0.25)' : 'transparent',
                   color: 'inherit',
                   cursor: 'pointer'
@@ -217,7 +217,7 @@ export default function Page() {
                 style={{
                   padding: '8px 10px',
                   borderRadius: 10,
-                  border: '1px solid rgba(231, 238, 252, 0.18)',
+                  border: '1px solid var(--border)',
                   background: 'transparent',
                   color: 'inherit',
                   cursor: 'pointer'
@@ -234,7 +234,7 @@ export default function Page() {
                     style={{
                       padding: '8px 10px',
                       borderRadius: 10,
-                      border: '1px solid rgba(231, 238, 252, 0.18)',
+                      border: '1px solid var(--border)',
                       background: 'transparent',
                       color: 'inherit',
                       cursor: 'pointer'
@@ -248,7 +248,7 @@ export default function Page() {
                     style={{
                       padding: '8px 10px',
                       borderRadius: 10,
-                      border: '1px solid rgba(231, 238, 252, 0.18)',
+                      border: '1px solid var(--border)',
                       background: 'transparent',
                       color: 'inherit',
                       cursor: 'pointer'
@@ -290,10 +290,10 @@ export default function Page() {
             const card = (
               <div
                 style={{
-                  border: '1px solid rgba(231, 238, 252, 0.12)',
+                  border: '1px solid var(--border_soft)',
                   borderRadius: 14,
                   padding: 12,
-                  background: 'rgba(255,255,255,0.02)'
+                  background: 'var(--panel)'
                 }}
               >
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -303,8 +303,8 @@ export default function Page() {
                       height: view === 'grid' ? 84 : 64,
                       borderRadius: 10,
                       overflow: 'hidden',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(231, 238, 252, 0.12)',
+                      background: 'var(--panel2)',
+                      border: '1px solid var(--border_soft)',
                       flex: '0 0 auto'
                     }}
                   >

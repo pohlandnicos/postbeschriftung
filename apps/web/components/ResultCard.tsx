@@ -20,10 +20,10 @@ export function ResultCard({ result }: { result: ProcessResult }) {
   return (
     <div
       style={{
-        border: '1px solid rgba(231, 238, 252, 0.12)',
+        border: '1px solid var(--border_soft)',
         borderRadius: 14,
         padding: 18,
-        background: 'rgba(255,255,255,0.02)'
+        background: 'var(--panel)'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>

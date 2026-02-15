@@ -33,10 +33,10 @@ export function Dropzone({
     <div
       {...getRootProps()}
       style={{
-        border: '1px dashed rgba(231, 238, 252, 0.35)',
+        border: '1px dashed var(--border)',
         borderRadius: 14,
         padding: 24,
-        background: 'rgba(255,255,255,0.03)',
+        background: 'var(--panel2)',
         cursor: busy ? 'not-allowed' : 'pointer',
         opacity: busy ? 0.6 : 1
       }}

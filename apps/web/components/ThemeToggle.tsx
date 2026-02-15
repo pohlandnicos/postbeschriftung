@@ -30,10 +30,13 @@ export function ThemeToggle() {
     applyTheme(next);
   };
 
+  const isDark = theme === 'dark';
+
   return (
     <button
       type="button"
       onClick={toggle}
+      aria-label={isDark ? 'Hellmodus' : 'Dunkelmodus'}
       style={{
         padding: '8px 10px',
         borderRadius: 10,
@@ -41,10 +44,40 @@ export function ThemeToggle() {
         background: 'transparent',
         color: 'inherit',
         cursor: 'pointer',
-        fontSize: 12
+        fontSize: 12,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 36,
+        height: 34
       }}
     >
-      {theme === 'dark' ? 'Hell' : 'Dunkel'}
+      {isDark ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path d="M12 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M12 20v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M4.93 4.93l1.41 1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M17.66 17.66l1.41 1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M2 12h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M20 12h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M4.93 19.07l1.41-1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M17.66 6.34l1.41-1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M21 14.1A7.5 7.5 0 0 1 9.9 3a6.5 6.5 0 1 0 11.1 11.1Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
     </button>
   );
 }
