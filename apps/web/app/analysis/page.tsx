@@ -147,6 +147,10 @@ export default function AnalysisPage() {
     []
   );
 
+  const rangeLabel = useMemo(() => {
+    return range === 'all' ? 'Alles' : range === '7d' ? 'Letzte 7 Tage' : 'Letzte 30 Tage';
+  }, [range]);
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
       <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
@@ -161,45 +165,50 @@ export default function AnalysisPage() {
         <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <div style={{ fontWeight: 800 }}>Filter</div>
-            <button
-              onClick={() => {
-                setObjectNumber('');
-                setDocType('');
-                setVendor('');
-                setRange('7d');
-              }}
-              style={{
-                padding: '7px 10px',
-                borderRadius: 10,
-                border: '1px solid var(--border_soft)',
-                background: 'var(--panel2)',
-                color: 'inherit',
-                fontSize: 12,
-                cursor: 'pointer'
-              }}
-            >
-              Reset
-            </button>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <HeaderComboBox
+                value={range}
+                options={rangeOptions}
+                onChange={(v) => setRange(v as any)}
+                leftIcon="calendar"
+                ariaLabel="Zeitraum"
+              />
+              <button
+                onClick={() => {
+                  setObjectNumber('');
+                  setDocType('');
+                  setVendor('');
+                  setRange('7d');
+                }}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border_soft)',
+                  background: 'var(--panel2)',
+                  color: 'inherit',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
               gap: 10
             }}
           >
             <LabeledComboBox label="Gebäude" value={objectNumber} options={objectOptions} onChange={setObjectNumber} placeholder="Gebäude suchen…" />
             <LabeledComboBox label="Dokument-Art" value={docType} options={docTypeOptions} onChange={setDocType} placeholder="Art suchen…" />
             <LabeledComboBox label="Lieferant" value={vendor} options={vendorOptions} onChange={setVendor} placeholder="Lieferant suchen…" />
-            <LabeledComboBox
-              label="Zeitraum"
-              value={range}
-              options={rangeOptions}
-              onChange={(v) => setRange(v as any)}
-              placeholder="Zeitraum…"
-              searchable={false}
-            />
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+            Zeitraum: {rangeLabel}
           </div>
         </div>
       </div>
@@ -427,7 +436,6 @@ function LabeledComboBox(props: {
   const { label, value, options, onChange, placeholder, searchable = true } = props;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
 
@@ -445,7 +453,7 @@ function LabeledComboBox(props: {
 
   useEffect(() => {
     if (!open) return;
-    if (searchable) inputRef.current?.focus();
+    // focus handled by the input itself
   }, [open, searchable]);
 
   const current = useMemo(() => options.find((o) => o.value === value) ?? options[0], [options, value]);
@@ -463,47 +471,67 @@ function LabeledComboBox(props: {
     <div ref={wrapRef} style={{ display: 'grid', gap: 6, position: 'relative' }}>
       <div style={{ fontSize: 12, opacity: 0.75 }}>{label}</div>
 
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((v) => !v);
-          setQ('');
-        }}
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          padding: '9px 38px 9px 10px',
-          borderRadius: 12,
-          border: '1px solid var(--border_soft)',
-          background: 'var(--panel2)',
-          color: 'inherit',
-          fontSize: 12,
-          cursor: 'pointer',
-          position: 'relative',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis'
-        }}
-      >
-        {current?.label ?? placeholder}
-        <span
-          aria-hidden
+      <div style={{ position: 'relative' }}>
+        <input
+          value={open && searchable ? q : current?.label ?? ''}
+          onChange={(e) => {
+            setQ(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            if (!searchable) setQ('');
+          }}
+          placeholder={placeholder}
+          readOnly={!searchable}
           style={{
-            position: 'absolute',
-            right: 10,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 18,
-            height: 18,
-            opacity: 0.7,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            backgroundSize: '18px 18px',
-            backgroundImage:
-              'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Cpolyline points=\"6 9 12 15 18 9\"/%3E%3C/svg%3E")'
+            width: '100%',
+            padding: '9px 38px 9px 10px',
+            borderRadius: 12,
+            border: open ? '1px solid rgba(37, 99, 235, 0.55)' : '1px solid var(--border_soft)',
+            background: 'var(--panel2)',
+            color: 'inherit',
+            fontSize: 12,
+            outline: 'none'
           }}
         />
-      </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen((v) => !v);
+            setQ('');
+          }}
+          aria-label={`${label} öffnen`}
+          style={{
+            position: 'absolute',
+            right: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 26,
+            height: 26,
+            borderRadius: 10,
+            border: '1px solid transparent',
+            background: 'transparent',
+            cursor: 'pointer',
+            display: 'grid',
+            placeItems: 'center',
+            opacity: 0.8
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 18,
+              height: 18,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+              backgroundSize: '18px 18px',
+              backgroundImage:
+                'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Cpolyline points=\"6 9 12 15 18 9\"/%3E%3C/svg%3E")'
+            }}
+          />
+        </button>
+      </div>
 
       {open ? (
         <div
@@ -520,27 +548,6 @@ function LabeledComboBox(props: {
             overflow: 'hidden'
           }}
         >
-          {searchable ? (
-            <div style={{ padding: 10, borderBottom: '1px solid var(--border_soft)', background: 'var(--panel)' }}>
-              <input
-                ref={inputRef}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={placeholder}
-                style={{
-                  width: '100%',
-                  padding: '9px 10px',
-                  borderRadius: 12,
-                  border: '1px solid var(--border_soft)',
-                  background: 'var(--panel2)',
-                  color: 'inherit',
-                  fontSize: 12,
-                  outline: 'none'
-                }}
-              />
-            </div>
-          ) : null}
-
           <div style={{ maxHeight: 280, overflow: 'auto', padding: 6 }}>
             {filtered.length ? (
               filtered.map((o) => {
@@ -552,6 +559,7 @@ function LabeledComboBox(props: {
                     onClick={() => {
                       onChange(o.value);
                       setOpen(false);
+                      setQ('');
                     }}
                     style={{
                       width: '100%',
@@ -577,6 +585,113 @@ function LabeledComboBox(props: {
             ) : (
               <div style={{ padding: 10, fontSize: 13, opacity: 0.75 }}>Keine Treffer.</div>
             )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HeaderComboBox(props: {
+  value: string;
+  options: ComboOption[];
+  onChange: (v: string) => void;
+  leftIcon?: 'calendar';
+  ariaLabel: string;
+}) {
+  const { value, options, onChange, leftIcon, ariaLabel } = props;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const current = useMemo(() => options.find((o) => o.value === value) ?? options[0], [options, value]);
+  const iconSvg =
+    leftIcon === 'calendar'
+      ? 'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Crect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/%3E%3Cline x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/%3E%3Cline x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/%3E%3Cline x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/%3E%3C/svg%3E")'
+      : null;
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          padding: '7px 10px',
+          borderRadius: 10,
+          border: '1px solid var(--border_soft)',
+          background: 'var(--panel2)',
+          color: 'inherit',
+          fontSize: 12,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}
+      >
+        {iconSvg ? (
+          <span
+            aria-hidden
+            style={{ width: 16, height: 16, backgroundImage: iconSvg, backgroundSize: '16px 16px', backgroundRepeat: 'no-repeat' }}
+          />
+        ) : null}
+        <span>{current?.label ?? ''}</span>
+      </button>
+
+      {open ? (
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 'calc(100% + 8px)',
+            zIndex: 60,
+            minWidth: 220,
+            border: '1px solid var(--border)',
+            background: 'var(--bg)',
+            borderRadius: 14,
+            boxShadow: '0 18px 46px rgba(0,0,0,0.18)',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ padding: 6 }}>
+            {options.map((o) => {
+              const active = o.value === value;
+              return (
+                <button
+                  key={`${o.value}-${o.label}`}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.value);
+                    setOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '9px 10px',
+                    borderRadius: 12,
+                    border: '1px solid transparent',
+                    background: active ? 'rgba(37, 99, 235, 0.10)' : 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: active ? 800 : 600
+                  }}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}
