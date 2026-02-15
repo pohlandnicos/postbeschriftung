@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { ProcessResult } from '@/lib/types';
 
-export function ResultCard({ result }: { result: ProcessResult }) {
+export function ResultCard({ result, embedded }: { result: ProcessResult; embedded?: boolean }) {
   const [showDebug, setShowDebug] = useState(false);
   const score = result.building_match?.score ?? null;
   const lowBuilding = score !== null && score < 90;
@@ -21,31 +21,37 @@ export function ResultCard({ result }: { result: ProcessResult }) {
 
   return (
     <div
-      style={{
-        border: '1px solid var(--border_soft)',
-        borderRadius: 14,
-        padding: 18,
-        background: 'var(--panel)'
-      }}
+      style={
+        embedded
+          ? undefined
+          : {
+              border: '1px solid var(--border_soft)',
+              borderRadius: 14,
+              padding: 18,
+              background: 'var(--panel)'
+            }
+      }
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Ergebnis</div>
-        {lowBuilding ? (
-          <div
-            style={{
-              fontSize: 12,
-              color: '#ffdd66',
-              border: '1px solid rgba(255,221,102,0.35)',
-              padding: '4px 8px',
-              borderRadius: 999
-            }}
-          >
-            Building Match &lt; 90
-          </div>
-        ) : null}
-      </div>
+      {!embedded ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Ergebnis</div>
+          {lowBuilding ? (
+            <div
+              style={{
+                fontSize: 12,
+                color: '#ffdd66',
+                border: '1px solid rgba(255,221,102,0.35)',
+                padding: '4px 8px',
+                borderRadius: 999
+              }}
+            >
+              Building Match &lt; 90
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+      <div style={{ marginTop: embedded ? 0 : 14, display: 'grid', gap: 10 }}>
         <Row k="file_id" v={result.file_id} />
         <Row k="doc_type" v={result.doc_type} />
         <Row k="vendor" v={result.vendor} />

@@ -508,7 +508,7 @@ export default function Page() {
                     }}
                   >
                     <div style={{ padding: 12 }}>
-                      <ResultCard result={it.result} />
+                      <ResultCard result={it.result} embedded />
                     </div>
                   </div>
                 ) : null}
