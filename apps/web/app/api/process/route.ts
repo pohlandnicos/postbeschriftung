@@ -130,7 +130,7 @@ async function loadObjects() {
     const supabase = getSupabaseAdmin();
     const res = await supabase
       .from('objects')
-      .select('object_number, building_name, street, aliases')
+      .select('object_number, building_name, street, postal_code, city, management, accounting, aliases')
       .eq('tenant_id', tenantId);
 
     if (res.error) return [];

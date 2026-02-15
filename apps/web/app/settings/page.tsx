@@ -1,19 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 
 type ObjectItem = {
   id?: string;
   object_number: string;
   building_name?: string | null;
   street?: string | null;
+  postal_code?: string | null;
   city?: string | null;
   management?: string | null;
   accounting?: string | null;
   aliases?: string[] | null;
 };
 
-function parseCsv(text: string): string[][] {
+function parseDelimited(text: string, delimiter: string): string[][] {
   const out: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -48,7 +50,7 @@ function parseCsv(text: string): string[][] {
       continue;
     }
 
-    if (!inQuotes && c === ',') {
+    if (!inQuotes && c === delimiter) {
       pushField();
       i += 1;
       continue;
@@ -72,6 +74,17 @@ function parseCsv(text: string): string[][] {
   return out.map((r) => r.map((x) => x.trim()));
 }
 
+function detectDelimiter(text: string): string {
+  const firstLine = text.split(/\r?\n/)[0] ?? '';
+  const count = (ch: string) => (firstLine.match(new RegExp(`\\${ch}`, 'g')) ?? []).length;
+  const commas = count(',');
+  const semis = count(';');
+  const tabs = (firstLine.match(/\t/g) ?? []).length;
+  if (tabs > Math.max(commas, semis)) return '\t';
+  if (semis > commas) return ';';
+  return ',';
+}
+
 function normalizeHeader(h: string) {
   return h
     .toLowerCase()
@@ -83,11 +96,17 @@ function normalizeHeader(h: string) {
     .trim();
 }
 
-function parseObjectsFromCsv(csvText: string): ObjectItem[] {
-  const rows = parseCsv(csvText).filter((r) => r.some((c) => c.trim()));
-  if (rows.length < 2) return [];
+function splitPostalCity(s: string): { postal_code: string | null; city: string | null } {
+  const m = /^\s*(\d{5})\s+(.+?)\s*$/.exec(s);
+  if (m) return { postal_code: m[1] ?? null, city: (m[2] ?? '').trim() || null };
+  return { postal_code: null, city: s.trim() || null };
+}
 
-  const header = rows[0].map(normalizeHeader);
+function parseObjectsFromRows(rows: string[][]): ObjectItem[] {
+  const cleanedRows = rows.filter((r) => r.some((c) => c.trim()));
+  if (cleanedRows.length < 2) return [];
+
+  const header = cleanedRows[0].map(normalizeHeader);
   const idx = (candidates: string[]) => {
     for (const c of candidates) {
       const i = header.indexOf(normalizeHeader(c));
@@ -98,14 +117,27 @@ function parseObjectsFromCsv(csvText: string): ObjectItem[] {
 
   const iObject = idx(['objekt-nr.', 'objekt-nr', 'objektnr', 'objekt_nr', 'object_number']);
   const iStreet = idx(['liegenschaft - strasse', 'liegenschaft - straße', 'strasse', 'straße', 'street']);
-  const iCity = idx(['liegenschaft - ort', 'ort', 'city']);
+  const iPostalCity = idx(['liegenschaft - ort', 'plz ort', 'ort', 'city']);
+  const iPostal = idx(['plz', 'postal_code', 'postleitzahl']);
   const iMgmt = idx(['objektverwaltung', 'verwaltung', 'management']);
   const iAcc = idx(['buchhaltung', 'accounting']);
 
-  return rows.slice(1).map((r) => {
+  return cleanedRows.slice(1).map((r) => {
     const object_number = (r[iObject] ?? '').trim();
     const street = iStreet >= 0 ? (r[iStreet] ?? '').trim() : '';
-    const city = iCity >= 0 ? (r[iCity] ?? '').trim() : '';
+
+    let postal_code: string | null = null;
+    let city: string | null = null;
+    if (iPostal >= 0) {
+      postal_code = (r[iPostal] ?? '').trim() || null;
+    }
+    if (iPostalCity >= 0) {
+      const pc = (r[iPostalCity] ?? '').trim();
+      const split = splitPostalCity(pc);
+      postal_code = postal_code ?? split.postal_code;
+      city = split.city;
+    }
+
     const management = iMgmt >= 0 ? (r[iMgmt] ?? '').trim() : '';
     const accounting = iAcc >= 0 ? (r[iAcc] ?? '').trim() : '';
 
@@ -116,12 +148,32 @@ function parseObjectsFromCsv(csvText: string): ObjectItem[] {
     return {
       object_number,
       street: street || null,
-      city: city || null,
+      postal_code,
+      city,
       management: management || null,
       accounting: accounting || null,
       aliases
     };
   });
+}
+
+function parseObjectsFromCsv(csvText: string): ObjectItem[] {
+  const delimiter = detectDelimiter(csvText);
+  const rows = parseDelimited(csvText, delimiter);
+  return parseObjectsFromRows(rows);
+}
+
+async function parseObjectsFromXlsx(file: File): Promise<ObjectItem[]> {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array' });
+  const sheetName = wb.SheetNames[0];
+  if (!sheetName) return [];
+  const sheet = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as any[];
+  const normalized: string[][] = rows
+    .map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
+    .filter((r) => r.length);
+  return parseObjectsFromRows(normalized);
 }
 
 export default function SettingsPage() {
@@ -163,6 +215,7 @@ export default function SettingsPage() {
             object_number: it.object_number,
             building_name: it.building_name ?? null,
             street: it.street ?? null,
+            postal_code: it.postal_code ?? null,
             city: it.city ?? null,
             management: it.management ?? null,
             accounting: it.accounting ?? null,
@@ -180,6 +233,11 @@ export default function SettingsPage() {
   }, [load]);
 
   const onFile = useCallback(async (file: File) => {
+    if (file.name.toLowerCase().endsWith('.xlsx') || file.type.includes('spreadsheetml')) {
+      const parsed = await parseObjectsFromXlsx(file);
+      setCsvText(JSON.stringify(parsed, null, 2));
+      return;
+    }
     const text = await file.text();
     setCsvText(text);
   }, []);
@@ -187,6 +245,10 @@ export default function SettingsPage() {
   const importPreview = useMemo(() => {
     if (!csvText.trim()) return [] as ObjectItem[];
     try {
+      if (csvText.trim().startsWith('[')) {
+        const obj = JSON.parse(csvText) as ObjectItem[];
+        return (Array.isArray(obj) ? obj : []).filter((x) => x.object_number);
+      }
       const parsed = parseObjectsFromCsv(csvText);
       return parsed.filter((x) => x.object_number);
     } catch {
@@ -249,6 +311,7 @@ export default function SettingsPage() {
                 <tr style={{ background: 'var(--panel2)' }}>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Objekt-Nr.</th>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Straße</th>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>PLZ</th>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Ort</th>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Verwaltung</th>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Buchhaltung</th>
@@ -263,6 +326,7 @@ export default function SettingsPage() {
                       [
                         ['object_number', it.object_number ?? ''],
                         ['street', it.street ?? ''],
+                        ['postal_code', it.postal_code ?? ''],
                         ['city', it.city ?? ''],
                         ['management', it.management ?? ''],
                         ['accounting', it.accounting ?? ''],
@@ -327,12 +391,12 @@ export default function SettingsPage() {
 
           <div style={{ padding: 12, display: 'grid', gap: 10 }}>
             <div style={{ fontSize: 13, opacity: 0.75 }}>
-              Exportiere deine Excel bitte als CSV (Komma-getrennt) und lade sie hier hoch.
+              Du kannst CSV oder Excel (.xlsx) hochladen. Bei "Liegenschaft - Ort" wird "PLZ Ort" automatisch getrennt.
             </div>
 
             <input
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void onFile(f);
@@ -348,7 +412,7 @@ export default function SettingsPage() {
 
             {csvText.trim() && !importPreview.length ? (
               <div style={{ fontSize: 13, opacity: 0.8 }}>
-                Keine Zeilen erkannt. Prüfe bitte, ob die CSV die Spalten "Objekt-Nr.", "Liegenschaft - Straße", "Liegenschaft - Ort" enthält.
+                Keine Zeilen erkannt. Prüfe bitte, ob die Datei die Spalten "Objekt-Nr.", "Liegenschaft - Straße", "Liegenschaft - Ort" enthält.
               </div>
             ) : null}
           </div>

@@ -8,6 +8,7 @@ type ObjectRow = {
   object_number: string;
   building_name?: string | null;
   street?: string | null;
+  postal_code?: string | null;
   city?: string | null;
   management?: string | null;
   accounting?: string | null;
@@ -20,7 +21,7 @@ export async function GET() {
 
   const res = await supabase
     .from('objects')
-    .select('id, object_number, building_name, street, city, management, accounting, aliases, created_at, updated_at')
+    .select('id, object_number, building_name, street, postal_code, city, management, accounting, aliases, created_at, updated_at')
     .eq('tenant_id', tenantId)
     .order('object_number', { ascending: true });
 
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
       object_number: String(it.object_number ?? '').trim(),
       building_name: it.building_name ?? null,
       street: it.street ?? null,
+      postal_code: it.postal_code ?? null,
       city: it.city ?? null,
       management: it.management ?? null,
       accounting: it.accounting ?? null,
