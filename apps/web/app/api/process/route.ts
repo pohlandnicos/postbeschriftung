@@ -126,8 +126,20 @@ async function loadVendorMap() {
 
 async function loadObjects() {
   try {
-    const raw = await fs.readFile(getDataPath('objects.csv'), 'utf8');
-    return parseObjectsCsv(raw);
+    const tenantId = getTenantId();
+    const supabase = getSupabaseAdmin();
+    const res = await supabase
+      .from('objects')
+      .select('object_number, building_name, street, aliases')
+      .eq('tenant_id', tenantId);
+
+    if (res.error) return [];
+    return (res.data ?? []).map((r) => ({
+      object_number: r.object_number,
+      building_name: r.building_name ?? '',
+      street: r.street ?? '',
+      aliases: Array.isArray(r.aliases) ? (r.aliases as string[]) : []
+    }));
   } catch {
     return [];
   }

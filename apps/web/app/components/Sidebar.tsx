@@ -109,6 +109,40 @@ const Sidebar = () => {
           </svg>
           {isExpanded && <div style={{ fontWeight: 500 }}>Analytik</div>}
         </Link>
+
+        <Link
+          href="/settings"
+          style={{
+            textDecoration: 'none',
+            color: 'inherit',
+            padding: '8px 12px',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: pathname === '/settings' ? 'var(--panel2)' : 'transparent',
+            transition: 'background 0.2s ease',
+            fontSize: 14
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8.4 8.4 0 0 0-1.7-1l-.4-2.6H9.1l-.4 2.6a8.4 8.4 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.97 7.97 0 0 0-.1 1c0 .34.03.67.1 1l-2 1.5 2 3.5 2.4-1c.53.4 1.1.73 1.7 1l.4 2.6h5.8l.4-2.6c.6-.27 1.17-.6 1.7-1l2.4 1 2-3.5-2-1.5Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {isExpanded && <div style={{ fontWeight: 500 }}>Einstellungen</div>}
+        </Link>
       </div>
 
       <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', borderTop: '1px solid var(--border_soft)' }}>
