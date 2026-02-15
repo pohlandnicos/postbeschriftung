@@ -285,7 +285,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const padR = 40;
   const padT = 14;
   const padB = 22;
-  const yTicks = 4;
+  const yTicks = 3;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [hover, setHover] = useState<{ idx: number; xPx: number; yPx: number; wPx: number; hPx: number } | null>(
@@ -358,19 +358,20 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         <rect x="0" y="0" width={w} height={h} fill="transparent" />
 
         {Array.from({ length: yTicks + 1 }).map((_, i) => {
-          const v = Math.round((max * (yTicks - i)) / yTicks);
+          const rawV = (max * (yTicks - i)) / yTicks;
+          const v = Math.ceil(rawV);
           const y = padT + ((h - padT - padB) * i) / yTicks;
           return (
             <g key={i}>
-              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border_soft)" strokeWidth="1" />
-              <text x={2} y={y + 3} fontSize="10" fill="currentColor" opacity="0.55">
+              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border_soft)" strokeWidth="1" strokeDasharray="4 4" />
+              <text x={2} y={y + 3} fontSize="11" fill="currentColor" opacity="0.6">
                 {v}
               </text>
             </g>
           );
         })}
         <path d={areaD} fill="url(#lineFill)" />
-        <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
+        <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.95)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
         {hovered && typeof hovered.x === 'number' ? (
           <line
