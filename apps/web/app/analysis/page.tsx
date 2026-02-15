@@ -364,7 +364,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           return (
             <g key={i}>
               <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border_soft)" strokeWidth="1" strokeDasharray="4 4" />
-              <text x={2} y={y + 3} fontSize="11" fill="currentColor" opacity="0.6">
+              <text x={4} y={y + 4} fontSize="13" fill="currentColor" opacity="0.65" fontWeight="500">
                 {v}
               </text>
             </g>
@@ -396,8 +396,8 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
       </svg>
 
       {hovered && typeof hovered.xPx === 'number' ? (() => {
-        const tooltipW = 180;
-        const tooltipH = 62;
+        const tooltipW = 140;
+        const tooltipH = 52;
 
         const left = Math.max(tooltipW / 2 + 8, Math.min(hovered.wPx - tooltipW / 2 - 8, hovered.xPx));
 
@@ -425,7 +425,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
               borderRadius: 12,
               padding: '8px 10px',
               fontSize: 12,
-              boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
               width: tooltipW,
               minHeight: tooltipH,
               zIndex: 10
