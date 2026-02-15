@@ -922,27 +922,50 @@ function DateRangePicker(props: {
                   const inRange = isInEffectiveRange(cell.iso);
                   const muted = !cell.inMonth;
 
-                  const baseBg = muted ? 'rgba(127, 127, 127, 0.08)' : 'var(--panel2)';
-                  const rangeBg = inRange ? (effectiveRange?.preview ? 'rgba(37, 99, 235, 0.10)' : 'rgba(37, 99, 235, 0.12)') : baseBg;
-                  const activeBg = active ? 'rgba(37, 99, 235, 0.22)' : rangeBg;
+                  const isSelectingEnd = Boolean(draftStart && !draftEnd);
+                  const isHoverDay = Boolean(hoverIso && cell.iso.slice(0, 10) === hoverIso.slice(0, 10));
 
-                  const radiusStyle: any = {};
-                  if (effectiveRange && inRange && !active) {
-                    const t = Date.parse(cell.iso);
-                    if (t === effectiveRange.start) {
-                      radiusStyle.borderTopLeftRadius = 10;
-                      radiusStyle.borderBottomLeftRadius = 10;
-                      radiusStyle.borderTopRightRadius = 4;
-                      radiusStyle.borderBottomRightRadius = 4;
-                    } else if (t === effectiveRange.end) {
-                      radiusStyle.borderTopRightRadius = 10;
-                      radiusStyle.borderBottomRightRadius = 10;
-                      radiusStyle.borderTopLeftRadius = 4;
-                      radiusStyle.borderBottomLeftRadius = 4;
+                  const rangeFill = effectiveRange?.preview ? 'rgba(37, 99, 235, 0.10)' : 'rgba(37, 99, 235, 0.12)';
+                  const edgeFill = 'rgba(37, 99, 235, 0.22)';
+                  const hoverFill = 'rgba(37, 99, 235, 0.10)';
+
+                  const t = Date.parse(cell.iso);
+                  const isStart = Boolean(effectiveRange && t === effectiveRange.start);
+                  const isEnd = Boolean(effectiveRange && t === effectiveRange.end);
+                  const isSingle = Boolean(effectiveRange && effectiveRange.start === effectiveRange.end);
+
+                  // Vercel-like: no default tile, only hover/range/edges are filled.
+                  // Use half gradients on edges to visually connect the range.
+                  let background: string = 'transparent';
+                  let backgroundImage: string | undefined = undefined;
+                  let border: string = '1px solid transparent';
+                  let radius = 10;
+
+                  if (inRange && effectiveRange) {
+                    if (isSingle && (isStart || isEnd)) {
+                      background = edgeFill;
+                      border = '1px solid rgba(37, 99, 235, 0.55)';
+                      radius = 10;
+                    } else if (isStart) {
+                      border = '1px solid rgba(37, 99, 235, 0.55)';
+                      radius = 10;
+                      backgroundImage = `linear-gradient(90deg, ${edgeFill} 0%, ${edgeFill} 50%, ${rangeFill} 50%, ${rangeFill} 100%)`;
+                    } else if (isEnd) {
+                      border = '1px solid rgba(37, 99, 235, 0.55)';
+                      radius = 10;
+                      backgroundImage = `linear-gradient(90deg, ${rangeFill} 0%, ${rangeFill} 50%, ${edgeFill} 50%, ${edgeFill} 100%)`;
                     } else {
-                      radiusStyle.borderRadius = 4;
+                      // middle range cells as a soft bar
+                      background = rangeFill;
+                      radius = 4;
                     }
+                  } else if (isHoverDay && isSelectingEnd) {
+                    background = hoverFill;
+                    radius = 10;
                   }
+
+                  // slightly fade out days not in current month
+                  const opacity = muted ? 0.45 : 1;
 
                   return (
                     <button
@@ -977,14 +1000,14 @@ function DateRangePicker(props: {
                       }}
                       style={{
                         height: 34,
-                        borderRadius: 10,
-                        border: active ? '1px solid rgba(37, 99, 235, 0.55)' : '1px solid transparent',
-                        background: activeBg,
+                        borderRadius: radius,
+                        border,
+                        background,
+                        backgroundImage,
                         color: 'inherit',
                         cursor: 'pointer',
-                        opacity: muted ? 0.55 : 1,
-                        fontWeight: active ? 900 : 600,
-                        ...(radiusStyle as any)
+                        opacity,
+                        fontWeight: active ? 900 : 600
                       }}
                     >
                       {cell.day}
