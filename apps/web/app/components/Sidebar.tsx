@@ -12,24 +12,9 @@ export type SidebarProps = {
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const pathname = usePathname();
 
   const isExpanded = !collapsed;
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem('theme');
-    const t = (saved === 'light' || saved === 'dark' ? saved : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as 'light' | 'dark';
-    setTheme(t);
-    document.documentElement.setAttribute('data-theme', t);
-  }, []);
-
-  const toggleTheme = () => {
-    const next: 'light' | 'dark' = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    window.localStorage.setItem('theme', next);
-    document.documentElement.setAttribute('data-theme', next);
-  };
 
   return (
     <div
@@ -101,7 +86,6 @@ const Sidebar = () => {
         </Link>
 
         <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ThemeSwitch value={theme} onChange={toggleTheme} />
           <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
         </div>
       </div>
