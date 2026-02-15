@@ -287,6 +287,13 @@ export default function Page() {
               return { bg: 'var(--panel2)', bd: 'var(--border)' };
             })();
 
+            const statusLabel =
+              it.status === 'processing' || it.status === 'queued'
+                ? 'Wird verarbeitet…'
+                : it.status === 'error'
+                  ? 'Fehler'
+                  : '';
+
             const card = (
               <div
                 style={{
@@ -372,7 +379,7 @@ export default function Page() {
                       {name}
                     </div>
                     <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                      {it.status}
+                      {statusLabel}
                       {it.error ? ` — ${it.error}` : ''}
                     </div>
                   </div>
@@ -491,8 +498,18 @@ export default function Page() {
                 </div>
 
                 {it.expanded && it.result ? (
-                  <div style={{ marginTop: 12 }}>
-                    <ResultCard result={it.result} />
+                  <div
+                    style={{
+                      marginTop: 12,
+                      border: '1px solid var(--border_soft)',
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      background: 'var(--panel2)'
+                    }}
+                  >
+                    <div style={{ padding: 12 }}>
+                      <ResultCard result={it.result} />
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -529,8 +546,8 @@ export default function Page() {
             style={{
               width: 'min(1000px, 96vw)',
               height: 'min(820px, 86vh)',
-              background: '#0b1220',
-              border: '1px solid rgba(231, 238, 252, 0.12)',
+              background: 'var(--bg)',
+              border: '1px solid var(--border_soft)',
               borderRadius: 16,
               overflow: 'hidden',
               display: 'grid',
@@ -544,7 +561,8 @@ export default function Page() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 12,
-                borderBottom: '1px solid rgba(231, 238, 252, 0.12)'
+                borderBottom: '1px solid var(--border_soft)',
+                background: 'var(--panel)'
               }}
             >
               <div

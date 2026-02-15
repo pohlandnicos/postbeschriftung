@@ -94,6 +94,7 @@ export function ResultCard({ result }: { result: ProcessResult }) {
 }
 
 function Row({ k, v }: { k: string; v: string }) {
+  const isLong = k === 'head' && v.length > 120;
   return (
     <div
       style={{
@@ -104,7 +105,15 @@ function Row({ k, v }: { k: string; v: string }) {
       }}
     >
       <div style={{ fontSize: 12, opacity: 0.7 }}>{k}</div>
-      <div style={{ fontSize: 13, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas' }}>
+      <div
+        style={{
+          fontSize: 13,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas',
+          whiteSpace: isLong ? 'nowrap' : 'normal',
+          overflow: isLong ? 'hidden' : 'visible',
+          textOverflow: isLong ? 'ellipsis' : 'clip'
+        }}
+      >
         {v}
       </div>
     </div>
