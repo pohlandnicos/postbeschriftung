@@ -167,7 +167,7 @@ export default function AnalysisPage() {
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Zeit gespart (30s pro Dokument)</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Zeitersparnis</div>
                 <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
@@ -181,36 +181,8 @@ export default function AnalysisPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           <Kpi title="Dateien" value={String(stats.count)} />
           <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
-          <Kpi title="OCR" value={String(stats.usedOpenAI)} />
-          <Kpi title="Textlayer" value={String(stats.withTextLayer)} />
-          <Kpi title="Zeit gespart" value={stats.timeLabel} />
+          <Kpi title="Zeitersparnis" value={stats.timeLabel} />
 
-          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontWeight: 800 }}>Aktionen</div>
-              <button
-                type="button"
-                onClick={() => {
-                  clearHistory();
-                  setItems([]);
-                }}
-                style={{
-                  padding: '8px 10px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(255, 120, 120, 0.35)',
-                  background: 'rgba(255, 120, 120, 0.08)',
-                  color: 'inherit',
-                  cursor: 'pointer',
-                  fontSize: 12
-                }}
-              >
-                Verlauf löschen
-              </button>
-            </div>
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-              Hinweis: Analyse basiert auf lokalem Browser-Speicher. Anderer Rechner/Browser hat eigene Daten.
-            </div>
-          </div>
         </div>
       </div>
 
@@ -258,7 +230,7 @@ export default function AnalysisPage() {
                   background: 'var(--panel2)'
                 }}
               >
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 650 }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 400 }}>
                   {it.suggested_filename}
                 </div>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
