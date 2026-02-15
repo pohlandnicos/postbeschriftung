@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { clearHistory, loadHistory } from '@/lib/history';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -278,6 +279,9 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const pad = 14;
   const yTicks = 4;
 
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   if (!series.length) {
     return (
       <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -302,9 +306,26 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const lineD = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaD = `${lineD} L ${coords.at(-1)?.x ?? pad} ${h - pad} L ${coords[0]?.x ?? pad} ${h - pad} Z`;
 
+  const hovered = hoverIdx !== null ? { idx: hoverIdx, x: coords[hoverIdx]?.x, y: coords[hoverIdx]?.y } : null;
+
   return (
-    <div style={{ width: '100%', overflow: 'hidden' }}>
-      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} style={{ display: 'block' }}>
+    <div ref={wrapRef} style={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        width="100%"
+        height={h}
+        style={{ display: 'block' }}
+        onMouseLeave={() => setHoverIdx(null)}
+        onMouseMove={(e) => {
+          const rect = wrapRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const relX = ((e.clientX - rect.left) / rect.width) * w;
+          const t = (relX - pad) / Math.max(1, w - pad * 2);
+          const idx = Math.round(t * (series.length - 1));
+          const clamped = Math.max(0, Math.min(series.length - 1, idx));
+          setHoverIdx(clamped);
+        }}
+      >
         <defs>
           <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="rgba(37, 99, 235, 0.35)" />
@@ -333,29 +354,34 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
             key={idx}
             cx={p.x}
             cy={p.y}
-            r={2.5}
-            fill="rgba(37, 99, 235, 0.95)"
+            r={hoverIdx === idx ? 4 : 2.5}
+            fill={hoverIdx === idx ? 'rgba(37, 99, 235, 1)' : 'rgba(37, 99, 235, 0.95)'}
           />
         ))}
-
-        {coords.map((p, idx) => {
-          const label = series[idx]?.[0] ?? '';
-          const v = series[idx]?.[1] ?? 0;
-          return (
-            <circle
-              key={`hit-${idx}`}
-              cx={p.x}
-              cy={p.y}
-              r={10}
-              fill="transparent"
-            >
-              <title>
-                {label}: {v}
-              </title>
-            </circle>
-          );
-        })}
       </svg>
+
+      {hovered && typeof hovered.x === 'number' && typeof hovered.y === 'number' ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${(hovered.x / w) * 100}%`,
+            top: `${(hovered.y / h) * 100}%`,
+            transform: 'translate(-50%, -110%)',
+            pointerEvents: 'none',
+            border: '1px solid var(--border_soft)',
+            background: 'var(--panel)',
+            borderRadius: 12,
+            padding: '8px 10px',
+            fontSize: 12,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+            minWidth: 140
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>{series[hovered.idx]?.[1] ?? 0}</div>
+          <div style={{ marginTop: 2, opacity: 0.75 }}>{series[hovered.idx]?.[0] ?? ''}</div>
+        </div>
+      ) : null}
+
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
         <div>{series[0]?.[0] ?? '—'}</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
