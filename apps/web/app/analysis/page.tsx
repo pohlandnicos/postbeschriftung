@@ -151,8 +151,8 @@ export default function AnalysisPage() {
       </div>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, minHeight: 320 }}>
+          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>Verarbeitete Dateien</div>
@@ -160,11 +160,11 @@ export default function AnalysisPage() {
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 12, flex: 1, minHeight: 0 }}>
               <MiniLineChart series={stats.series} />
             </div>
           </div>
-          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>Zeitersparnis</div>
@@ -172,7 +172,7 @@ export default function AnalysisPage() {
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
             </div>
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 12, flex: 1, minHeight: 0 }}>
               <MiniLineChart series={stats.timeSeries} />
             </div>
           </div>
@@ -279,8 +279,8 @@ function Row({ k, v }: { k: string; v: number }) {
 }
 
 function MiniLineChart({ series }: { series: [string, number][] }) {
-  const w = 640;
-  const h = 180;
+  const w = 720;
+  const h = 240;
   const padL = 28;
   const padR = 40;
   const padT = 14;
@@ -294,7 +294,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
 
   if (!series.length) {
     return (
-      <div style={{ width: '100%', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
         <div style={{ height: h, borderRadius: 12, background: 'var(--panel2)', border: '1px solid var(--border_soft)' }} />
         <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
           <div>—</div>
