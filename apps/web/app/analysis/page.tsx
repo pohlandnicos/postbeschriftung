@@ -155,7 +155,7 @@ export default function AnalysisPage() {
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Verarbeitete Dateien</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Dateien</div>
                 <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
@@ -167,8 +167,8 @@ export default function AnalysisPage() {
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Zeitersparnis</div>
-                <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Minuten</div>
+                <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitersparnis</div>
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
             </div>
