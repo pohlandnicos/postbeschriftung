@@ -423,6 +423,8 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get('file');
     const page1 = form.get('page1');
+    const page1Error = form.get('page1_error');
+    const page1Ms = form.get('page1_ms');
 
     if (!file || !(file instanceof File)) {
       return new NextResponse('Missing file', { status: 400 });
@@ -451,6 +453,8 @@ export async function POST(req: Request) {
     const canUseOpenAI = Boolean(process.env.OPENAI_API_KEY);
     const page1Received = page1 instanceof File;
     const page1Size = page1Received ? page1.size : 0;
+    const page1ErrStr = typeof page1Error === 'string' ? page1Error : '';
+    const page1MsNum = typeof page1Ms === 'string' ? Number.parseFloat(page1Ms) : null;
 
     if (textLen < 200 && page1Received && canUseOpenAI) {
       const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
@@ -504,6 +508,8 @@ export async function POST(req: Request) {
         openai_available: canUseOpenAI,
         page1_received: page1Received,
         page1_size: page1Size,
+        page1_error: page1ErrStr,
+        page1_ms: page1MsNum,
         build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
         head: text
           .split(/\r?\n/)

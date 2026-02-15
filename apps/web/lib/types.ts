@@ -29,6 +29,8 @@ export type ProcessResult = {
     openai_available?: boolean;
     page1_received?: boolean;
     page1_size?: number;
+    page1_error?: string;
+    page1_ms?: number | null;
     [k: string]: unknown;
   };
 };

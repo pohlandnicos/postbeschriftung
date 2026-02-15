@@ -16,7 +16,7 @@ export default function Page() {
     setResult(null);
     try {
       const page1 = await renderFirstPagePng(file);
-      const r = await processPdf(file, page1);
+      const r = await processPdf(file, page1.blob, page1.error, page1.ms);
       setResult(r);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
