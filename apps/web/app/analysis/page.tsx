@@ -281,7 +281,7 @@ function Row({ k, v }: { k: string; v: number }) {
 function MiniLineChart({ series }: { series: [string, number][] }) {
   const w = 720;
   const h = 240;
-  const padL = 28;
+  const padL = 36;
   const padR = 40;
   const padT = 14;
   const padB = 22;
@@ -364,7 +364,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           return (
             <g key={i}>
               <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border_soft)" strokeWidth="1" strokeDasharray="4 4" />
-              <text x={4} y={y + 4} fontSize="13" fill="currentColor" opacity="0.65" fontWeight="500">
+              <text x={8} y={y + 4} fontSize="12" fill="currentColor" opacity="0.65" fontWeight="500" textAnchor="start">
                 {v}
               </text>
             </g>
