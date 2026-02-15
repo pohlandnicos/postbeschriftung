@@ -71,6 +71,24 @@ export default function AnalysisPage() {
       series.push([k, byDay.get(k) ?? 0]);
     }
 
+    const timeSeries: [string, number][] = [];
+    for (let t = start; t <= end; t += 24 * 60 * 60 * 1000) {
+      const k = dayKey(t);
+      const docs = byDay.get(k) ?? 0;
+      timeSeries.push([k, docs * 30]); // 30 seconds per doc
+    }
+
+    const totalTimeSaved = filtered.length * 30; // seconds
+    const totalMinutes = Math.floor(totalTimeSaved / 60);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const timeLabel =
+      totalHours > 0
+        ? `${totalHours}h ${remainingMinutes}min`
+        : totalMinutes > 0
+        ? `${totalMinutes}min`
+        : `${totalTimeSaved}s`;
+
     const recent = filtered.slice(0, 15);
 
     return {
@@ -82,6 +100,8 @@ export default function AnalysisPage() {
       topTypes,
       topVendors,
       series,
+      timeSeries,
+      timeLabel,
       recent
     };
   }, [items, range]);
@@ -144,12 +164,26 @@ export default function AnalysisPage() {
           </div>
         </div>
 
+        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>Zeit gespart (30s pro Dokument)</div>
+              <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <MiniLineChart series={stats.timeSeries} />
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Kpi title="Dateien" value={String(stats.count)} />
             <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
             <Kpi title="OCR" value={String(stats.usedOpenAI)} />
             <Kpi title="Textlayer" value={String(stats.withTextLayer)} />
+            <Kpi title="Zeit gespart" value={stats.timeLabel} />
           </div>
 
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
