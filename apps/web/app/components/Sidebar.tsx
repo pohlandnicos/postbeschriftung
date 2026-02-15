@@ -103,7 +103,7 @@ const Sidebar = () => {
           {isExpanded && <div>Analyse</div>}
         </Link>
 
-        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12, opacity: isExpanded ? 1 : 0.85, transition: 'opacity 0.2s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ThemeSwitch value={theme} onChange={toggleTheme} />
             {isExpanded && <div style={{ fontSize: 13 }}>{theme === 'dark' ? 'Dunkel' : 'Hell'}</div>}

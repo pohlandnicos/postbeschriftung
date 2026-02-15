@@ -19,7 +19,9 @@ export function SidebarSwitch({
           height: 28,
           borderRadius: 999,
           border: '1px solid var(--border)',
-          background: 'var(--panel2)'
+          background: 'var(--panel2)',
+          boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.05)',
+          transition: 'border-color 0.2s ease'
         }}
       >
         <button
@@ -37,7 +39,9 @@ export function SidebarSwitch({
             cursor: 'pointer',
             color: value === 'expanded' ? 'var(--bg)' : 'inherit',
             opacity: value === 'expanded' ? 1 : 0.5,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `scale(${value === 'expanded' ? 0.92 : 1})`,
+            boxShadow: value === 'expanded' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -66,7 +70,9 @@ export function SidebarSwitch({
             cursor: 'pointer',
             color: value === 'hover' ? 'var(--bg)' : 'inherit',
             opacity: value === 'hover' ? 1 : 0.5,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `scale(${value === 'hover' ? 0.92 : 1})`,
+            boxShadow: value === 'hover' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,7 +95,9 @@ export function SidebarSwitch({
             cursor: 'pointer',
             color: value === 'collapsed' ? 'var(--bg)' : 'inherit',
             opacity: value === 'collapsed' ? 1 : 0.5,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `scale(${value === 'collapsed' ? 0.92 : 1})`,
+            boxShadow: value === 'collapsed' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

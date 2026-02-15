@@ -22,7 +22,9 @@ export function ThemeSwitch({
           border: '1px solid var(--border)',
           background: 'var(--panel2)',
           position: 'relative',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.05)',
+          transition: 'border-color 0.2s ease'
         }}
       >
         <div
@@ -35,7 +37,9 @@ export function ThemeSwitch({
             borderRadius: 999,
             background: 'var(--fg)',
             opacity: 0.9,
-            transition: 'left 0.2s ease'
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+            transform: `scale(${value === value ? 0.9 : 1})`
           }}
         />
         <div
