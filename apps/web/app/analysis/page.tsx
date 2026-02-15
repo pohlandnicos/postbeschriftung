@@ -340,7 +340,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           return (
             <g key={i}>
               <line x1={pad} y1={y} x2={w - pad} y2={y} stroke="var(--border_soft)" strokeWidth="1" />
-              <text x={pad} y={y - 4} fontSize="10" fill="currentColor" opacity="0.6">
+              <text x={2} y={y + 3} fontSize="10" fill="currentColor" opacity="0.55">
                 {v}
               </text>
             </g>
@@ -348,6 +348,17 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         })}
         <path d={areaD} fill="url(#lineFill)" />
         <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
+
+        {hovered && typeof hovered.x === 'number' ? (
+          <line
+            x1={hovered.x}
+            y1={pad}
+            x2={hovered.x}
+            y2={h - pad}
+            stroke="rgba(37, 99, 235, 0.25)"
+            strokeWidth="1"
+          />
+        ) : null}
 
         {coords.map((p, idx) => (
           <circle
@@ -360,27 +371,50 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         ))}
       </svg>
 
-      {hovered && typeof hovered.x === 'number' && typeof hovered.y === 'number' ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${(hovered.x / w) * 100}%`,
-            top: `${(hovered.y / h) * 100}%`,
-            transform: 'translate(-50%, -110%)',
-            pointerEvents: 'none',
-            border: '1px solid var(--border_soft)',
-            background: 'var(--panel)',
-            borderRadius: 12,
-            padding: '8px 10px',
-            fontSize: 12,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
-            minWidth: 140
-          }}
-        >
-          <div style={{ fontWeight: 800 }}>{series[hovered.idx]?.[1] ?? 0}</div>
-          <div style={{ marginTop: 2, opacity: 0.75 }}>{series[hovered.idx]?.[0] ?? ''}</div>
-        </div>
-      ) : null}
+      {hovered && typeof hovered.x === 'number' && typeof hovered.y === 'number' ? (() => {
+        const leftPct = (hovered.x / w) * 100;
+        const topPct = (hovered.y / h) * 100;
+        const clampedLeft = Math.max(14, Math.min(86, leftPct));
+        const v = series[hovered.idx]?.[1] ?? 0;
+        const d = series[hovered.idx]?.[0] ?? '';
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${clampedLeft}%`,
+              top: `${topPct}%`,
+              transform: 'translate(-50%, -120%)',
+              pointerEvents: 'none',
+              border: '1px solid var(--border_soft)',
+              background: 'var(--panel)',
+              borderRadius: 12,
+              padding: '8px 10px',
+              fontSize: 12,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              minWidth: 160
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                bottom: -6,
+                width: 10,
+                height: 10,
+                transform: 'translateX(-50%) rotate(45deg)',
+                background: 'var(--panel)',
+                borderRight: '1px solid var(--border_soft)',
+                borderBottom: '1px solid var(--border_soft)'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+              <div style={{ fontWeight: 800, fontSize: 14 }}>{v}</div>
+              <div style={{ opacity: 0.75 }}>{d}</div>
+            </div>
+            <div style={{ marginTop: 2, opacity: 0.75 }}>Verarbeitete Dateien</div>
+          </div>
+        );
+      })() : null}
 
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
         <div>{series[0]?.[0] ?? '—'}</div>
