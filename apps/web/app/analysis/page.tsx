@@ -280,7 +280,9 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const yTicks = 4;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [hover, setHover] = useState<{ idx: number; xPx: number; yPx: number; wPx: number; hPx: number } | null>(
+    null
+  );
 
   if (!series.length) {
     return (
@@ -306,7 +308,18 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const lineD = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaD = `${lineD} L ${coords.at(-1)?.x ?? pad} ${h - pad} L ${coords[0]?.x ?? pad} ${h - pad} Z`;
 
-  const hovered = hoverIdx !== null ? { idx: hoverIdx, x: coords[hoverIdx]?.x, y: coords[hoverIdx]?.y } : null;
+  const hovered =
+    hover !== null
+      ? {
+          idx: hover.idx,
+          x: coords[hover.idx]?.x,
+          y: coords[hover.idx]?.y,
+          xPx: hover.xPx,
+          yPx: hover.yPx,
+          wPx: hover.wPx,
+          hPx: hover.hPx
+        }
+      : null;
 
   return (
     <div ref={wrapRef} style={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
@@ -315,7 +328,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         width="100%"
         height={h}
         style={{ display: 'block' }}
-        onMouseLeave={() => setHoverIdx(null)}
+        onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => {
           const rect = wrapRef.current?.getBoundingClientRect();
           if (!rect) return;
@@ -323,7 +336,9 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           const t = (relX - pad) / Math.max(1, w - pad * 2);
           const idx = Math.round(t * (series.length - 1));
           const clamped = Math.max(0, Math.min(series.length - 1, idx));
-          setHoverIdx(clamped);
+          const xPx = e.clientX - rect.left;
+          const yPx = e.clientY - rect.top;
+          setHover({ idx: clamped, xPx, yPx, wPx: rect.width, hPx: rect.height });
         }}
       >
         <defs>
@@ -365,25 +380,36 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
             key={idx}
             cx={p.x}
             cy={p.y}
-            r={hoverIdx === idx ? 4 : 2.5}
-            fill={hoverIdx === idx ? 'rgba(37, 99, 235, 1)' : 'rgba(37, 99, 235, 0.95)'}
+            r={hovered?.idx === idx ? 4 : 2.5}
+            fill={hovered?.idx === idx ? 'rgba(37, 99, 235, 1)' : 'rgba(37, 99, 235, 0.95)'}
           />
         ))}
       </svg>
 
-      {hovered && typeof hovered.x === 'number' && typeof hovered.y === 'number' ? (() => {
-        const leftPct = (hovered.x / w) * 100;
-        const topPct = (hovered.y / h) * 100;
-        const clampedLeft = Math.max(14, Math.min(86, leftPct));
+      {hovered && typeof hovered.xPx === 'number' ? (() => {
+        const tooltipW = 180;
+        const tooltipH = 62;
+
+        const left = Math.max(tooltipW / 2 + 8, Math.min(hovered.wPx - tooltipW / 2 - 8, hovered.xPx));
+
+        const preferBelow = hovered.yPx < 54;
+        const preferAbove = hovered.yPx > hovered.hPx - 54;
+        const placeBelow = preferBelow && !preferAbove;
+
+        const top = placeBelow
+          ? Math.min(hovered.hPx - 8, hovered.yPx + 16)
+          : Math.max(8, hovered.yPx - 16);
+
         const v = series[hovered.idx]?.[1] ?? 0;
         const d = series[hovered.idx]?.[0] ?? '';
+
         return (
           <div
             style={{
               position: 'absolute',
-              left: `${clampedLeft}%`,
-              top: `${topPct}%`,
-              transform: 'translate(-50%, -120%)',
+              left,
+              top,
+              transform: placeBelow ? 'translate(-50%, 0%)' : 'translate(-50%, -100%)',
               pointerEvents: 'none',
               border: '1px solid var(--border_soft)',
               background: 'var(--panel)',
@@ -391,20 +417,25 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
               padding: '8px 10px',
               fontSize: 12,
               boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
-              minWidth: 160
+              width: tooltipW,
+              minHeight: tooltipH,
+              zIndex: 10
             }}
           >
             <div
               style={{
                 position: 'absolute',
                 left: '50%',
-                bottom: -6,
+                top: placeBelow ? -6 : undefined,
+                bottom: placeBelow ? undefined : -6,
                 width: 10,
                 height: 10,
                 transform: 'translateX(-50%) rotate(45deg)',
                 background: 'var(--panel)',
-                borderRight: '1px solid var(--border_soft)',
-                borderBottom: '1px solid var(--border_soft)'
+                borderLeft: placeBelow ? '1px solid var(--border_soft)' : undefined,
+                borderTop: placeBelow ? '1px solid var(--border_soft)' : undefined,
+                borderRight: placeBelow ? undefined : '1px solid var(--border_soft)',
+                borderBottom: placeBelow ? undefined : '1px solid var(--border_soft)'
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
