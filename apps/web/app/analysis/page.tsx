@@ -420,13 +420,24 @@ function LabeledSelect(props: {
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         style={{
-          padding: '9px 10px',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+          padding: '9px 38px 9px 10px',
           borderRadius: 12,
-          border: '1px solid var(--border)',
-          background: 'transparent',
+          border: '1px solid var(--border_soft)',
+          background: 'var(--panel2)',
           color: 'inherit',
           fontSize: 12,
-          width: '100%'
+          width: '100%',
+          outline: 'none',
+          boxShadow: 'none',
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Cpolyline points=\"6 9 12 15 18 9\"/%3E%3C/svg%3E")',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 12px center',
+          backgroundSize: '16px 16px',
+          cursor: 'pointer'
         }}
       >
         {props.children}
