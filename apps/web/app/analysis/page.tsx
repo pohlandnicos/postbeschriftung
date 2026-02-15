@@ -45,14 +45,13 @@ export default function AnalysisPage() {
     const topTypes = [...byType.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
     const topVendors = [...byVendor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
-    const dayKey = (d: Date) => d.toISOString().slice(0, 10);
-    const startOfDay = (t: number) => {
+    const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
+    const utcStartOfDay = (t: number) => {
       const d = new Date(t);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     };
 
-    const end = startOfDay(now);
+    const end = utcStartOfDay(now);
     let start = end;
     if (range === '7d') start = end - 6 * 24 * 60 * 60 * 1000;
     if (range === '30d') start = end - 29 * 24 * 60 * 60 * 1000;
@@ -60,14 +59,14 @@ export default function AnalysisPage() {
       const times = filtered
         .map((it) => Date.parse(it.created_at))
         .filter((t) => Number.isFinite(t))
-        .map((t) => startOfDay(t));
+        .map((t) => utcStartOfDay(t));
       start = times.length ? Math.min(...times) : end;
       start = Math.max(start, end - 59 * 24 * 60 * 60 * 1000);
     }
 
     const series: [string, number][] = [];
     for (let t = start; t <= end; t += 24 * 60 * 60 * 1000) {
-      const k = dayKey(new Date(t));
+      const k = dayKey(t);
       series.push([k, byDay.get(k) ?? 0]);
     }
 
@@ -314,6 +313,16 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         <rect x="0" y="0" width={w} height={h} fill="transparent" />
         <path d={areaD} fill="url(#lineFill)" />
         <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
+
+        {coords.map((p, idx) => (
+          <circle
+            key={idx}
+            cx={p.x}
+            cy={p.y}
+            r={2.5}
+            fill="rgba(37, 99, 235, 0.95)"
+          />
+        ))}
       </svg>
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
         <div>{series[0]?.[0] ?? '—'}</div>
