@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SidebarIcon } from './SidebarIcon';
 
 export type SidebarProps = {
@@ -11,9 +11,31 @@ export type SidebarProps = {
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const prevCollapsedRef = useRef<boolean | null>(null);
   const pathname = usePathname();
 
   const isExpanded = !collapsed;
+
+  useEffect(() => {
+    const onPreview = (e: Event) => {
+      const ce = e as CustomEvent<{ open?: boolean }>;
+      const open = Boolean(ce.detail?.open);
+
+      if (open) {
+        if (prevCollapsedRef.current === null) prevCollapsedRef.current = collapsed;
+        setCollapsed(true);
+        return;
+      }
+
+      if (prevCollapsedRef.current !== null) {
+        setCollapsed(prevCollapsedRef.current);
+        prevCollapsedRef.current = null;
+      }
+    };
+
+    window.addEventListener('dc:preview', onPreview as EventListener);
+    return () => window.removeEventListener('dc:preview', onPreview as EventListener);
+  }, [collapsed]);
 
   return (
     <div

@@ -31,6 +31,11 @@ export default function Page() {
 
   const previewItem = previewId ? items.find((i) => i.id === previewId) ?? null : null;
 
+  const setPreview = useCallback((id: string | null) => {
+    setPreviewId(id);
+    window.dispatchEvent(new CustomEvent('dc:preview', { detail: { open: Boolean(id) } }));
+  }, []);
+
   const removeItem = useCallback((id: string) => {
     setItems((prev) => {
       const it = prev.find((p) => p.id === id);
@@ -38,7 +43,11 @@ export default function Page() {
       if (it?.thumbUrl) URL.revokeObjectURL(it.thumbUrl);
       return prev.filter((p) => p.id !== id);
     });
-    setPreviewId((p) => (p === id ? null : p));
+    setPreviewId((p) => {
+      const next = p === id ? null : p;
+      window.dispatchEvent(new CustomEvent('dc:preview', { detail: { open: Boolean(next) } }));
+      return next;
+    });
   }, []);
 
   const downloadAllIndividually = useCallback(() => {
@@ -86,7 +95,7 @@ export default function Page() {
       }
       return [];
     });
-    setPreviewId(null);
+    setPreview(null);
   }, []);
 
   const processOne = useCallback(async (itemId: string, file: File) => {
@@ -321,9 +330,9 @@ export default function Page() {
                     }}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setPreviewId(it.id)}
+                    onClick={() => setPreview(it.id)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') setPreviewId(it.id);
+                      if (e.key === 'Enter' || e.key === ' ') setPreview(it.id);
                     }}
                   >
                     {it.thumbUrl ? (
@@ -389,7 +398,7 @@ export default function Page() {
                 <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={() => setPreviewId(it.id)}
+                    onClick={() => setPreview(it.id)}
                     aria-label="Vorschau"
                     style={{
                       width: 34,
@@ -564,7 +573,7 @@ export default function Page() {
             </div>
             <button
               type="button"
-              onClick={() => setPreviewId(null)}
+              onClick={() => setPreview(null)}
               aria-label="Vorschau schließen"
               style={{
                 padding: 4,
