@@ -110,115 +110,90 @@ export default function AnalysisPage() {
     };
   }, [data]);
 
+  const filtersLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (objectNumber) parts.push(`Objekt #${objectNumber}`);
+    if (docType) parts.push(docType);
+    if (vendor) parts.push(vendor);
+    parts.push(range === 'all' ? 'Zeitraum: Alles' : range === '7d' ? 'Zeitraum: 7 Tage' : 'Zeitraum: 30 Tage');
+    return parts.join(' · ');
+  }, [docType, objectNumber, range, vendor]);
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Analyse</div>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>
-            Dashboard über deine verarbeiteten Dateien (Supabase).
+      <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Analyse</div>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>Dashboard über deine verarbeiteten Dateien (Supabase).</div>
           </div>
+          <div style={{ fontSize: 12, opacity: 0.7, textAlign: 'right' }}>{busy ? 'Lädt…' : filtersLabel}</div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <select
-            value={objectNumber}
-            onChange={(e) => setObjectNumber(e.target.value)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'inherit',
-              fontSize: 12,
-              minWidth: 200
-            }}
-          >
-            <option value="">Alle Gebäude</option>
-            {(data?.facets.objects ?? []).map((o) => (
-              <option key={o.object_number ?? 'none'} value={o.object_number ?? ''}>
-                {(o.object_number ? `#${o.object_number}` : 'Ohne Objekt') + (o.label ? ` — ${o.label}` : '')} ({o.count})
-              </option>
-            ))}
-          </select>
 
-          <select
-            value={docType}
-            onChange={(e) => setDocType(e.target.value)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'inherit',
-              fontSize: 12,
-              minWidth: 170
-            }}
-          >
-            <option value="">Alle Arten</option>
-            {(data?.facets.doc_types ?? []).map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+            <div style={{ fontWeight: 800 }}>Filter</div>
+            <button
+              onClick={() => {
+                setObjectNumber('');
+                setDocType('');
+                setVendor('');
+                setRange('7d');
+              }}
+              style={{
+                padding: '7px 10px',
+                borderRadius: 10,
+                border: '1px solid var(--border_soft)',
+                background: 'var(--panel2)',
+                color: 'inherit',
+                fontSize: 12,
+                cursor: 'pointer'
+              }}
+            >
+              Reset
+            </button>
+          </div>
 
-          <select
-            value={vendor}
-            onChange={(e) => setVendor(e.target.value)}
+          <div
             style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'inherit',
-              fontSize: 12,
-              minWidth: 170
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+              gap: 10
             }}
           >
-            <option value="">Alle Lieferanten</option>
-            {(data?.facets.vendors ?? []).map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
+            <LabeledSelect label="Gebäude" value={objectNumber} onChange={setObjectNumber}>
+              <option value="">Alle Gebäude</option>
+              {(data?.facets.objects ?? []).map((o) => (
+                <option key={o.object_number ?? 'none'} value={o.object_number ?? ''}>
+                  {(o.object_number ? `#${o.object_number}` : 'Ohne Objekt') + (o.label ? ` — ${o.label}` : '')} ({o.count})
+                </option>
+              ))}
+            </LabeledSelect>
 
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value as any)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'inherit',
-              fontSize: 12
-            }}
-          >
-            <option value="7d">Letzte 7 Tage</option>
-            <option value="30d">Letzte 30 Tage</option>
-            <option value="all">Alles</option>
-          </select>
+            <LabeledSelect label="Dokument-Art" value={docType} onChange={setDocType}>
+              <option value="">Alle Arten</option>
+              {(data?.facets.doc_types ?? []).map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </LabeledSelect>
 
-          <button
-            onClick={() => {
-              setObjectNumber('');
-              setDocType('');
-              setVendor('');
-              setRange('7d');
-            }}
-            style={{
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border_soft)',
-              background: 'var(--panel2)',
-              color: 'inherit',
-              fontSize: 12,
-              cursor: 'pointer'
-            }}
-          >
-            Reset
-          </button>
+            <LabeledSelect label="Lieferant" value={vendor} onChange={setVendor}>
+              <option value="">Alle Lieferanten</option>
+              {(data?.facets.vendors ?? []).map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </LabeledSelect>
+
+            <LabeledSelect label="Zeitraum" value={range} onChange={(v) => setRange(v as any)}>
+              <option value="7d">Letzte 7 Tage</option>
+              <option value="30d">Letzte 30 Tage</option>
+              <option value="all">Alles</option>
+            </LabeledSelect>
+          </div>
         </div>
       </div>
 
@@ -229,14 +204,14 @@ export default function AnalysisPage() {
       ) : null}
 
       <div style={{ display: 'grid', gap: 12 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, minHeight: 320 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, minHeight: 320 }}>
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>Dateien</div>
                 <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{busy ? 'Lädt…' : range === 'all' ? 'Alle' : range}</div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Alle' : range}</div>
             </div>
             <div style={{ marginTop: 12, flex: 1, minHeight: 0 }}>
               <MiniLineChart series={stats.series} />
@@ -256,7 +231,7 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
           <Kpi title="Dateien" value={String(stats.count)} />
           <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
           <Kpi title="Zeitersparnis" value={stats.timeLabel} />
@@ -264,7 +239,7 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12 }}>
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
         <Panel title="Dokumenttypen">
           {stats.topTypes.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
@@ -309,7 +284,7 @@ export default function AnalysisPage() {
 
         {data?.matrix?.length ? (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--panel2)' }}>
                   <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Gebäude</th>
@@ -329,18 +304,18 @@ export default function AnalysisPage() {
                   .map((row) => {
                     const key = row.object_number ?? 'none';
                     return (
-                      <tr key={key} style={{ borderBottom: '1px solid var(--border_soft)' }}>
-                        <td style={{ padding: 10, verticalAlign: 'top', maxWidth: 420 }}>
+                      <tr key={key} style={{ background: 'transparent' }}>
+                        <td style={{ padding: 10, verticalAlign: 'top', maxWidth: 420, borderBottom: '1px solid var(--border_soft)' }}>
                           <div style={{ fontWeight: 700 }}>
                             {row.object_number ? `#${row.object_number}` : 'Ohne Objekt'}
                           </div>
                           {row.label ? <div style={{ fontSize: 12, opacity: 0.75 }}>{row.label}</div> : null}
                         </td>
-                        <td style={{ padding: 10, textAlign: 'right', fontWeight: 800 }}>{row.total}</td>
+                        <td style={{ padding: 10, textAlign: 'right', fontWeight: 800, borderBottom: '1px solid var(--border_soft)' }}>{row.total}</td>
                         {(data?.facets.doc_types ?? []).slice(0, 8).map((t) => {
                           const v = row.by_type?.[t] ?? 0;
                           return (
-                            <td key={t} style={{ padding: 10, textAlign: 'right' }}>
+                            <td key={t} style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid var(--border_soft)' }}>
                               <button
                                 disabled={!v}
                                 onClick={() => {
@@ -377,34 +352,34 @@ export default function AnalysisPage() {
       <div style={{ marginTop: 12, border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Letzte Dateien</div>
         {stats.recent.length ? (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {stats.recent.map((it) => (
-              <div
-                key={it.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 130px 150px 110px 70px',
-                  gap: 10,
-                  alignItems: 'baseline',
-                  padding: '8px 10px',
-                  borderRadius: 12,
-                  border: '1px solid var(--border_soft)',
-                  background: 'var(--panel2)'
-                }}
-              >
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 400 }}>
-                  {it.suggested_filename}
-                </div>
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
-                  {it.object_number ? `#${it.object_number}` : '—'}
-                </div>
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, opacity: 0.75 }}>
-                  {it.vendor || 'UNK'}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>{it.doc_type || 'Unbekannt'}</div>
-                <div style={{ fontSize: 12, opacity: 0.75, textAlign: 'right' }}>{typeof it.pages === 'number' ? it.pages : '—'}</div>
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--panel2)' }}>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)' }}>Datei</th>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Gebäude</th>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)' }}>Lieferant</th>
+                  <th style={{ textAlign: 'left', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Art</th>
+                  <th style={{ textAlign: 'right', padding: 10, borderBottom: '1px solid var(--border_soft)', whiteSpace: 'nowrap' }}>Seiten</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recent.map((it) => (
+                  <tr key={it.id} style={{ borderBottom: '1px solid var(--border_soft)' }}>
+                    <td style={{ padding: 10, maxWidth: 420 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.suggested_filename}</div>
+                      <div style={{ marginTop: 2, fontSize: 12, opacity: 0.65 }}>{new Date(it.created_at).toLocaleString()}</div>
+                    </td>
+                    <td style={{ padding: 10, whiteSpace: 'nowrap' }}>{it.object_number ? `#${it.object_number}` : '—'}</td>
+                    <td style={{ padding: 10, maxWidth: 260 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.vendor || 'UNK'}</div>
+                    </td>
+                    <td style={{ padding: 10, whiteSpace: 'nowrap' }}>{it.doc_type || 'Unbekannt'}</td>
+                    <td style={{ padding: 10, textAlign: 'right' }}>{typeof it.pages === 'number' ? it.pages : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div style={{ fontSize: 13, opacity: 0.75 }}>Noch keine Daten.</div>
@@ -429,6 +404,34 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
       <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
       {children}
     </div>
+  );
+}
+
+function LabeledSelect(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <div style={{ fontSize: 12, opacity: 0.75 }}>{props.label}</div>
+      <select
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        style={{
+          padding: '9px 10px',
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          background: 'transparent',
+          color: 'inherit',
+          fontSize: 12,
+          width: '100%'
+        }}
+      >
+        {props.children}
+      </select>
+    </label>
   );
 }
 
