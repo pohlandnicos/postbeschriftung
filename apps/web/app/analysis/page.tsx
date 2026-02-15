@@ -276,7 +276,10 @@ function Row({ k, v }: { k: string; v: number }) {
 function MiniLineChart({ series }: { series: [string, number][] }) {
   const w = 640;
   const h = 180;
-  const pad = 14;
+  const padL = 28;
+  const padR = 40;
+  const padT = 14;
+  const padB = 22;
   const yTicks = 4;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -300,13 +303,13 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const max = Math.max(1, ...values);
 
   const coords = series.map(([, v], i) => {
-    const x = pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1);
-    const y = h - pad - (v * (h - pad * 2)) / max;
+    const x = padL + (i * (w - padL - padR)) / Math.max(1, series.length - 1);
+    const y = h - padB - (v * (h - padT - padB)) / max;
     return { x, y };
   });
   const points = coords.map((p) => `${p.x},${p.y}`).join(' ');
   const lineD = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  const areaD = `${lineD} L ${coords.at(-1)?.x ?? pad} ${h - pad} L ${coords[0]?.x ?? pad} ${h - pad} Z`;
+  const areaD = `${lineD} L ${coords.at(-1)?.x ?? padL} ${h - padB} L ${coords[0]?.x ?? padL} ${h - padB} Z`;
 
   const hovered =
     hover !== null
@@ -333,7 +336,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           const rect = wrapRef.current?.getBoundingClientRect();
           if (!rect) return;
           const relX = ((e.clientX - rect.left) / rect.width) * w;
-          const t = (relX - pad) / Math.max(1, w - pad * 2);
+          const t = (relX - padL) / Math.max(1, w - padL - padR);
           const idx = Math.round(t * (series.length - 1));
           const clamped = Math.max(0, Math.min(series.length - 1, idx));
           const xPx = e.clientX - rect.left;
@@ -351,10 +354,10 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
 
         {Array.from({ length: yTicks + 1 }).map((_, i) => {
           const v = Math.round((max * (yTicks - i)) / yTicks);
-          const y = pad + ((h - pad * 2) * i) / yTicks;
+          const y = padT + ((h - padT - padB) * i) / yTicks;
           return (
             <g key={i}>
-              <line x1={pad} y1={y} x2={w - pad} y2={y} stroke="var(--border_soft)" strokeWidth="1" />
+              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="var(--border_soft)" strokeWidth="1" />
               <text x={2} y={y + 3} fontSize="10" fill="currentColor" opacity="0.55">
                 {v}
               </text>
@@ -367,9 +370,9 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
         {hovered && typeof hovered.x === 'number' ? (
           <line
             x1={hovered.x}
-            y1={pad}
+            y1={padT}
             x2={hovered.x}
-            y2={h - pad}
+            y2={h - padB}
             stroke="rgba(37, 99, 235, 0.25)"
             strokeWidth="1"
           />
@@ -411,12 +414,12 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
               top,
               transform: placeBelow ? 'translate(-50%, 0%)' : 'translate(-50%, -100%)',
               pointerEvents: 'none',
-              border: '1px solid var(--border_soft)',
-              background: 'var(--panel)',
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
               borderRadius: 12,
               padding: '8px 10px',
               fontSize: 12,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
               width: tooltipW,
               minHeight: tooltipH,
               zIndex: 10
@@ -431,11 +434,11 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
                 width: 10,
                 height: 10,
                 transform: 'translateX(-50%) rotate(45deg)',
-                background: 'var(--panel)',
-                borderLeft: placeBelow ? '1px solid var(--border_soft)' : undefined,
-                borderTop: placeBelow ? '1px solid var(--border_soft)' : undefined,
-                borderRight: placeBelow ? undefined : '1px solid var(--border_soft)',
-                borderBottom: placeBelow ? undefined : '1px solid var(--border_soft)'
+                background: 'var(--bg)',
+                borderLeft: placeBelow ? '1px solid var(--border)' : undefined,
+                borderTop: placeBelow ? '1px solid var(--border)' : undefined,
+                borderRight: placeBelow ? undefined : '1px solid var(--border)',
+                borderBottom: placeBelow ? undefined : '1px solid var(--border)'
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
