@@ -14,9 +14,9 @@ export async function renderFirstPagePng(
     const work = (async () => {
       const arrayBuffer = await file.arrayBuffer();
 
-      const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf');
+      const pdfjs: any = await import('pdfjs-dist/webpack');
 
-      const loadingTask = pdfjs.getDocument({ data: arrayBuffer, disableWorker: true });
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
 
       const page = await pdf.getPage(1);
