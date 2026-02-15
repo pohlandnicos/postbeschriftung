@@ -14,6 +14,8 @@ export function ResultCard({ result }: { result: ProcessResult }) {
   const page1Received =
     typeof result.debug?.page1_received === 'boolean' ? result.debug.page1_received : false;
   const page1Size = typeof result.debug?.page1_size === 'number' ? result.debug.page1_size : null;
+  const page1Error = typeof result.debug?.page1_error === 'string' ? result.debug.page1_error : '';
+  const page1Ms = typeof result.debug?.page1_ms === 'number' ? result.debug.page1_ms : null;
 
   return (
     <div
@@ -52,6 +54,8 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="openai_available" v={openaiAvailable ? 'true' : 'false'} />
         <Row k="page1_received" v={page1Received ? 'true' : 'false'} />
         <Row k="page1_size" v={page1Size === null ? '' : String(page1Size)} />
+        <Row k="page1_error" v={page1Error} />
+        <Row k="page1_ms" v={page1Ms === null ? '' : String(page1Ms)} />
         <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
         <Row k="build_sha" v={buildSha} />
         <Row
