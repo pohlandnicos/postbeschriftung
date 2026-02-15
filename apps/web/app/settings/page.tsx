@@ -93,6 +93,7 @@ function normalizeHeader(h: string) {
     .replace(/ö/g, 'oe')
     .replace(/ü/g, 'ue')
     .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9 ]/g, '')
     .trim();
 }
 
