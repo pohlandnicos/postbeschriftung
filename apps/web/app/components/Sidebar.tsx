@@ -3,19 +3,20 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { IconButton } from './IconButton';
+import { ThemeSwitch } from './ThemeSwitch';
+import { SidebarSwitch, type SidebarMode } from './SidebarSwitch';
 
 export type SidebarProps = {
   // add props here if needed
 };
 
 const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [mode, setMode] = useState<SidebarMode>('expanded');
   const [hovered, setHovered] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const pathname = usePathname();
 
-  const isExpanded = !collapsed || hovered;
+  const isExpanded = mode === 'expanded' || (mode === 'hover' && hovered);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('theme');
@@ -102,40 +103,16 @@ const Sidebar = () => {
           {isExpanded && <div>Analyse</div>}
         </Link>
 
-        <div style={{ marginTop: 'auto', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <IconButton
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d={theme === 'dark' ? 'M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z' : 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 5V3M12 21v-2M5 12H3M21 12h-2M7 7L5.5 5.5M19 19l-1.5-1.5M7 17l-1.5 1.5M19 5l-1.5 1.5'}
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            }
-            label={isExpanded ? (theme === 'dark' ? 'Hell' : 'Dunkel') : undefined}
-            active={theme === 'dark'}
-            onClick={toggleTheme}
-          />
+        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <ThemeSwitch value={theme} onChange={toggleTheme} />
+            {isExpanded && <div style={{ fontSize: 13 }}>{theme === 'dark' ? 'Dunkel' : 'Hell'}</div>}
+          </div>
 
-          <IconButton
-            icon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d={collapsed ? 'M9 20l6-8-6-8' : 'M15 4l-6 8 6 8'}
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            }
-            label={isExpanded ? (collapsed ? 'Öffnen' : 'Schließen') : undefined}
-            active={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SidebarSwitch value={mode} onChange={setMode} />
+            {isExpanded && <div style={{ fontSize: 13 }}>Sidebar</div>}
+          </div>
         </div>
       </div>
     </div>
