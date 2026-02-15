@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ThemeGroup } from './ThemeGroup';
-import { SidebarToggle } from './SidebarToggle';
+import { ThemeSwitch } from './ThemeSwitch';
+import { SidebarIcon } from './SidebarIcon';
 
 export type SidebarProps = {
   // add props here if needed
@@ -12,12 +12,10 @@ export type SidebarProps = {
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const pathname = usePathname();
 
-  const mode = collapsed ? (hovered ? 'center' : 'right') : 'left';
-  const isExpanded = !collapsed || hovered;
+  const isExpanded = !collapsed;
 
   useEffect(() => {
     const saved = window.localStorage.getItem('theme');
@@ -105,8 +103,8 @@ const Sidebar = () => {
         </Link>
 
         <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ThemeGroup value={theme} onChange={toggleTheme} />
-          <SidebarToggle collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} />
+          <ThemeSwitch value={theme} onChange={toggleTheme} />
+          <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
         </div>
       </div>
     </div>
