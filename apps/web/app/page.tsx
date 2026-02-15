@@ -308,7 +308,14 @@ export default function Page() {
                       overflow: 'hidden',
                       background: 'var(--panel2)',
                       border: '1px solid var(--border_soft)',
-                      flex: '0 0 auto'
+                      flex: '0 0 auto',
+                      cursor: 'pointer'
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setPreviewId(it.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') setPreviewId(it.id);
                     }}
                   >
                     {it.thumbUrl ? (
