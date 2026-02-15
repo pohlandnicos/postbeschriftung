@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ThemeToggle } from './ThemeToggle';
-import { SidebarButton } from './SidebarButton';
+import { VercelSwitch } from './VercelSwitch';
+import { ChatGPTButton } from './ChatGPTButton';
 
 export type SidebarProps = {
   // add props here if needed
@@ -105,8 +105,8 @@ const Sidebar = () => {
         </Link>
 
         <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ThemeToggle value={theme} onChange={toggleTheme} />
-          <SidebarButton collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} />
+          <VercelSwitch value={theme} onChange={toggleTheme} />
+          <ChatGPTButton collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} />
         </div>
       </div>
     </div>
