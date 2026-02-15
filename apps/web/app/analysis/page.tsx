@@ -768,14 +768,14 @@ function DateRangePicker(props: {
             width: 520,
             maxWidth: 'calc(100vw - 40px)',
             border: '1px solid var(--border_soft)',
-            background: 'var(--panel)',
+            background: 'var(--bg)',
             borderRadius: 14,
             boxShadow: '0 18px 46px rgba(0,0,0,0.22)',
             overflow: 'hidden'
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', background: 'var(--panel)' }}>
-            <div style={{ padding: 10, borderRight: '1px solid var(--border_soft)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', background: 'var(--bg)' }}>
+            <div style={{ padding: 10, borderRight: '1px solid var(--border_soft)', background: 'var(--panel)' }}>
               <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8 }}>Quick</div>
               <div style={{ display: 'grid', gap: 2 }}>
                 {(
@@ -796,7 +796,7 @@ function DateRangePicker(props: {
                       padding: '8px 10px',
                       borderRadius: 10,
                       border: '1px solid transparent',
-                      background: presetActive(p.key) ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                      background: presetActive(p.key) ? 'rgba(37, 99, 235, 0.12)' : 'var(--panel2)',
                       color: 'inherit',
                       fontSize: 12,
                       cursor: 'pointer',
@@ -905,7 +905,7 @@ function DateRangePicker(props: {
               </div>
             </div>
 
-            <div style={{ padding: 12, background: 'var(--panel)' }}>
+            <div style={{ padding: 12, background: 'var(--bg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
                 <div style={{ fontWeight: 800 }}>{monthLabel}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -964,6 +964,11 @@ function DateRangePicker(props: {
                   const active = isEdge(cell.iso);
                   const inRange = isInRange(cell.iso);
                   const muted = !cell.inMonth;
+
+                  const baseBg = muted ? 'rgba(127, 127, 127, 0.08)' : 'var(--panel2)';
+                  const rangeBg = inRange ? 'rgba(37, 99, 235, 0.12)' : baseBg;
+                  const activeBg = active ? 'rgba(37, 99, 235, 0.22)' : rangeBg;
+
                   return (
                     <button
                       key={cell.iso}
@@ -991,10 +996,10 @@ function DateRangePicker(props: {
                         height: 34,
                         borderRadius: 10,
                         border: active ? '1px solid rgba(37, 99, 235, 0.55)' : '1px solid transparent',
-                        background: active ? 'rgba(37, 99, 235, 0.18)' : inRange ? 'rgba(37, 99, 235, 0.10)' : 'transparent',
+                        background: activeBg,
                         color: 'inherit',
                         cursor: 'pointer',
-                        opacity: muted ? 0.45 : 1,
+                        opacity: muted ? 0.55 : 1,
                         fontWeight: active ? 900 : 600
                       }}
                     >
