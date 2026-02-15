@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import type { ProcessResult } from '@/lib/types';
 
 export function ResultCard({ result }: { result: ProcessResult }) {
+  const [showDebug, setShowDebug] = useState(false);
   const score = result.building_match?.score ?? null;
   const lowBuilding = score !== null && score < 90;
   const textLen = typeof result.debug?.text_length === 'number' ? result.debug.text_length : null;
@@ -50,14 +52,6 @@ export function ResultCard({ result }: { result: ProcessResult }) {
         <Row k="amount" v={result.amount === null ? '' : String(result.amount)} />
         <Row k="currency" v={result.currency} />
         <Row k="date" v={result.date ?? ''} />
-        <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
-        <Row k="openai_available" v={openaiAvailable ? 'true' : 'false'} />
-        <Row k="page1_received" v={page1Received ? 'true' : 'false'} />
-        <Row k="page1_size" v={page1Size === null ? '' : String(page1Size)} />
-        <Row k="page1_error" v={page1Error} />
-        <Row k="page1_ms" v={page1Ms === null ? '' : String(page1Ms)} />
-        <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
-        <Row k="build_sha" v={buildSha} />
         <Row
           k="building"
           v={
@@ -67,28 +61,39 @@ export function ResultCard({ result }: { result: ProcessResult }) {
           }
         />
         <Row k="suggested_filename" v={result.suggested_filename} />
-        <Row k="head" v={head} />
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-        <a
-          href={`/api/download/${encodeURIComponent(result.file_id)}`}
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => setShowDebug((v) => !v)}
           style={{
-            textDecoration: 'none',
-            padding: '10px 12px',
-            borderRadius: 12,
-            background: '#2563eb',
-            color: 'white',
-            fontWeight: 700,
-            fontSize: 14
+            padding: '8px 10px',
+            borderRadius: 10,
+            border: '1px solid var(--border)',
+            background: 'transparent',
+            color: 'inherit',
+            cursor: 'pointer',
+            fontSize: 12
           }}
         >
-          PDF herunterladen
-        </a>
-        <div style={{ fontSize: 12, opacity: 0.75, alignSelf: 'center' }}>
-          Download nutzt den vorgeschlagenen Dateinamen.
-        </div>
+          {showDebug ? 'Debug ausblenden' : 'Debug anzeigen'}
+        </button>
       </div>
+
+      {showDebug ? (
+        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+          <Row k="text_length" v={textLen === null ? '' : String(textLen)} />
+          <Row k="openai_available" v={openaiAvailable ? 'true' : 'false'} />
+          <Row k="page1_received" v={page1Received ? 'true' : 'false'} />
+          <Row k="page1_size" v={page1Size === null ? '' : String(page1Size)} />
+          <Row k="page1_error" v={page1Error} />
+          <Row k="page1_ms" v={page1Ms === null ? '' : String(page1Ms)} />
+          <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
+          <Row k="build_sha" v={buildSha} />
+          <Row k="head" v={head} />
+        </div>
+      ) : null}
     </div>
   );
 }
