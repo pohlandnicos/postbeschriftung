@@ -89,8 +89,10 @@ const Sidebar = () => {
         </Link>
       </div>
 
-      <div style={{ position: 'absolute', left: 0, bottom: 0, width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--border_soft)' }}>
-        <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
+      <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', borderTop: '1px solid var(--border_soft)' }}>
+        <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
+        </div>
       </div>
     </div>
   );
