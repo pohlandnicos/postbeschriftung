@@ -636,9 +636,27 @@ function DateRangePicker(props: {
   const [draftStart, setDraftStart] = useState<string | null>(from);
   const [draftEnd, setDraftEnd] = useState<string | null>(to);
 
+  const [draftStartTime, setDraftStartTime] = useState<string>('00:00');
+  const [draftEndTime, setDraftEndTime] = useState<string>('23:59');
+
   useEffect(() => {
     setDraftStart(from);
     setDraftEnd(to);
+    // best-effort derive time from iso
+    if (from) {
+      const hh = from.slice(11, 13);
+      const mm = from.slice(14, 16);
+      if (hh && mm) setDraftStartTime(`${hh}:${mm}`);
+    } else {
+      setDraftStartTime('00:00');
+    }
+    if (to) {
+      const hh = to.slice(11, 13);
+      const mm = to.slice(14, 16);
+      if (hh && mm) setDraftEndTime(`${hh}:${mm}`);
+    } else {
+      setDraftEndTime('23:59');
+    }
   }, [from, to]);
 
   useEffect(() => {
@@ -685,6 +703,29 @@ function DateRangePicker(props: {
     return (startMs !== null && t === startMs) || (endMs !== null && t === endMs);
   };
 
+  const presetActive = (key: '7d' | '30d' | 'all') => !from && !to && range === key;
+
+  const setDraftStartFromDate = (dateIso: string) => {
+    const day = dateIso.slice(0, 10);
+    setDraftStart(new Date(`${day}T${draftStartTime}:00.000Z`).toISOString());
+  };
+
+  const setDraftEndFromDate = (dateIso: string) => {
+    const day = dateIso.slice(0, 10);
+    setDraftEnd(new Date(`${day}T${draftEndTime}:00.000Z`).toISOString());
+  };
+
+  const applyDraft = () => {
+    // if only start selected, treat as single-day range
+    if (draftStart && !draftEnd) {
+      const day = draftStart.slice(0, 10);
+      const endIso = new Date(`${day}T${draftEndTime}:00.000Z`).toISOString();
+      onApply({ from: draftStart, to: endIso });
+      return;
+    }
+    onApply({ from: draftStart, to: draftEnd });
+  };
+
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
@@ -726,17 +767,17 @@ function DateRangePicker(props: {
             zIndex: 80,
             width: 520,
             maxWidth: 'calc(100vw - 40px)',
-            border: '1px solid var(--border)',
-            background: 'var(--bg)',
-            borderRadius: 16,
-            boxShadow: '0 18px 46px rgba(0,0,0,0.20)',
+            border: '1px solid var(--border_soft)',
+            background: 'var(--panel)',
+            borderRadius: 14,
+            boxShadow: '0 18px 46px rgba(0,0,0,0.22)',
             overflow: 'hidden'
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr' }}>
-            <div style={{ padding: 12, borderRight: '1px solid var(--border_soft)', background: 'var(--panel)' }}>
-              <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10 }}>Quick</div>
-              <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', background: 'var(--panel)' }}>
+            <div style={{ padding: 10, borderRight: '1px solid var(--border_soft)' }}>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8 }}>Quick</div>
+              <div style={{ display: 'grid', gap: 2 }}>
                 {(
                   [
                     { key: '7d' as const, label: 'Letzte 7 Tage' },
@@ -752,14 +793,15 @@ function DateRangePicker(props: {
                       setOpen(false);
                     }}
                     style={{
-                      padding: '9px 10px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border_soft)',
-                      background: 'var(--panel2)',
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      border: '1px solid transparent',
+                      background: presetActive(p.key) ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
                       color: 'inherit',
-                      fontSize: 13,
+                      fontSize: 12,
                       cursor: 'pointer',
-                      textAlign: 'left'
+                      textAlign: 'left',
+                      fontWeight: presetActive(p.key) ? 800 : 600
                     }}
                   >
                     {p.label}
@@ -767,61 +809,103 @@ function DateRangePicker(props: {
                 ))}
               </div>
 
-              <div style={{ marginTop: 14, fontSize: 12, opacity: 0.75, marginBottom: 8 }}>Custom</div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                <label style={{ display: 'grid', gap: 6 }}>
-                  <div style={{ fontSize: 12, opacity: 0.75 }}>Start</div>
-                  <input
-                    type="date"
-                    value={draftStart ? draftStart.slice(0, 10) : ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (!v) {
-                        setDraftStart(null);
-                        return;
-                      }
-                      setDraftStart(new Date(v + 'T00:00:00.000Z').toISOString());
-                    }}
-                    style={{
-                      padding: '9px 10px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border_soft)',
-                      background: 'var(--panel2)',
-                      color: 'inherit',
-                      fontSize: 12,
-                      outline: 'none'
-                    }}
-                  />
-                </label>
-                <label style={{ display: 'grid', gap: 6 }}>
-                  <div style={{ fontSize: 12, opacity: 0.75 }}>Ende</div>
-                  <input
-                    type="date"
-                    value={draftEnd ? draftEnd.slice(0, 10) : ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (!v) {
-                        setDraftEnd(null);
-                        return;
-                      }
-                      // end of day UTC
-                      setDraftEnd(new Date(v + 'T23:59:59.999Z').toISOString());
-                    }}
-                    style={{
-                      padding: '9px 10px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border_soft)',
-                      background: 'var(--panel2)',
-                      color: 'inherit',
-                      fontSize: 12,
-                      outline: 'none'
-                    }}
-                  />
-                </label>
+              <div style={{ marginTop: 10, fontSize: 11, opacity: 0.7, marginBottom: 6 }}>Custom</div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 11, opacity: 0.7 }}>Start</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 74px', gap: 8 }}>
+                    <input
+                      type="date"
+                      value={draftStart ? draftStart.slice(0, 10) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setDraftStart(null);
+                          return;
+                        }
+                        setDraftStart(new Date(`${v}T${draftStartTime}:00.000Z`).toISOString());
+                      }}
+                      style={{
+                        padding: '8px 8px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border_soft)',
+                        background: 'var(--panel2)',
+                        color: 'inherit',
+                        fontSize: 12,
+                        outline: 'none'
+                      }}
+                    />
+                    <input
+                      type="time"
+                      value={draftStartTime}
+                      onChange={(e) => {
+                        const v = e.target.value || '00:00';
+                        setDraftStartTime(v);
+                        if (draftStart) setDraftStartFromDate(draftStart);
+                      }}
+                      style={{
+                        padding: '8px 8px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border_soft)',
+                        background: 'var(--panel2)',
+                        color: 'inherit',
+                        fontSize: 12,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 11, opacity: 0.7 }}>Ende</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 74px', gap: 8 }}>
+                    <input
+                      type="date"
+                      value={draftEnd ? draftEnd.slice(0, 10) : ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setDraftEnd(null);
+                          return;
+                        }
+                        setDraftEnd(new Date(`${v}T${draftEndTime}:00.000Z`).toISOString());
+                      }}
+                      style={{
+                        padding: '8px 8px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border_soft)',
+                        background: 'var(--panel2)',
+                        color: 'inherit',
+                        fontSize: 12,
+                        outline: 'none'
+                      }}
+                    />
+                    <input
+                      type="time"
+                      value={draftEndTime}
+                      onChange={(e) => {
+                        const v = e.target.value || '23:59';
+                        setDraftEndTime(v);
+                        if (draftEnd) setDraftEndFromDate(draftEnd);
+                      }}
+                      style={{
+                        padding: '8px 8px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border_soft)',
+                        background: 'var(--panel2)',
+                        color: 'inherit',
+                        fontSize: 12,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 2, fontSize: 11, opacity: 0.6 }}>Local (UTC)</div>
               </div>
             </div>
 
-            <div style={{ padding: 12 }}>
+            <div style={{ padding: 12, background: 'var(--panel)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
                 <div style={{ fontWeight: 800 }}>{monthLabel}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -866,7 +950,7 @@ function DateRangePicker(props: {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, fontSize: 11, opacity: 0.65, marginBottom: 8 }}>
                 {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => (
                   <div key={d} style={{ textAlign: 'center' }}>
                     {d}
@@ -885,8 +969,8 @@ function DateRangePicker(props: {
                       key={cell.iso}
                       type="button"
                       onClick={() => {
-                        const isoStart = new Date(cell.iso.slice(0, 10) + 'T00:00:00.000Z').toISOString();
-                        const isoEnd = new Date(cell.iso.slice(0, 10) + 'T23:59:59.999Z').toISOString();
+                        const isoStart = new Date(`${cell.iso.slice(0, 10)}T${draftStartTime}:00.000Z`).toISOString();
+                        const isoEnd = new Date(`${cell.iso.slice(0, 10)}T${draftEndTime}:00.000Z`).toISOString();
 
                         if (!draftStart || (draftStart && draftEnd)) {
                           setDraftStart(isoStart);
@@ -897,7 +981,7 @@ function DateRangePicker(props: {
                         const start = Date.parse(draftStart);
                         const picked = Date.parse(isoStart);
                         if (picked < start) {
-                          setDraftEnd(new Date(draftStart.slice(0, 10) + 'T23:59:59.999Z').toISOString());
+                          setDraftEnd(new Date(`${draftStart.slice(0, 10)}T${draftEndTime}:00.000Z`).toISOString());
                           setDraftStart(isoStart);
                         } else {
                           setDraftEnd(isoEnd);
@@ -905,9 +989,9 @@ function DateRangePicker(props: {
                       }}
                       style={{
                         height: 34,
-                        borderRadius: 12,
-                        border: '1px solid var(--border_soft)',
-                        background: active ? 'rgba(37, 99, 235, 0.22)' : inRange ? 'rgba(37, 99, 235, 0.10)' : 'var(--panel2)',
+                        borderRadius: 10,
+                        border: active ? '1px solid rgba(37, 99, 235, 0.55)' : '1px solid transparent',
+                        background: active ? 'rgba(37, 99, 235, 0.18)' : inRange ? 'rgba(37, 99, 235, 0.10)' : 'transparent',
                         color: 'inherit',
                         cursor: 'pointer',
                         opacity: muted ? 0.45 : 1,
@@ -943,7 +1027,7 @@ function DateRangePicker(props: {
                 <button
                   type="button"
                   onClick={() => {
-                    onApply({ from: draftStart, to: draftEnd });
+                    applyDraft();
                     setOpen(false);
                   }}
                   style={{
