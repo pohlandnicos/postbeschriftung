@@ -2,8 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useState, useEffect } from 'react';
+import { ToggleButton } from './ToggleButton';
 
 export type SidebarProps = {
   // add props here if needed
@@ -12,9 +12,24 @@ export type SidebarProps = {
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const pathname = usePathname();
 
   const isExpanded = !collapsed || hovered;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('theme');
+    const t = (saved === 'light' || saved === 'dark' ? saved : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as 'light' | 'dark';
+    setTheme(t);
+    document.documentElement.setAttribute('data-theme', t);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: 'light' | 'dark' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    window.localStorage.setItem('theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
 
   return (
     <div
@@ -88,46 +103,62 @@ const Sidebar = () => {
         </Link>
 
         <div style={{ marginTop: 'auto', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div
-            style={{
-              padding: '10px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              opacity: 0.85
-            }}
-          >
-            <ThemeToggle />
-            {isExpanded && <div>Theme</div>}
-          </div>
+          <ToggleButton
+            value={theme === 'dark'}
+            onChange={() => toggleTheme()}
+            label={isExpanded ? 'Theme' : undefined}
+            leftIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+            rightIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            }
+          />
 
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border_soft)',
-              background: 'var(--panel2)',
-              color: 'inherit',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              width: '100%'
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d={collapsed ? 'M13 19l6-6-6-6M5 19l6-6-6-6' : 'M11 19l-6-6 6-6M19 19l-6-6 6-6'}
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {isExpanded && <div>Sidebar {collapsed ? 'öffnen' : 'schließen'}</div>}
-          </button>
+          <ToggleButton
+            value={collapsed}
+            onChange={setCollapsed}
+            label={isExpanded ? 'Sidebar' : undefined}
+            leftIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M11 19l-6-6 6-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            }
+            rightIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M13 19l6-6-6-6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            }
+            threeState
+            onHover={setHovered}
+          />
         </div>
       </div>
     </div>
