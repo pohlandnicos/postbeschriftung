@@ -3,7 +3,8 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ModernSwitch } from './ModernSwitch';
+import { ThemeToggle } from './ThemeToggle';
+import { SidebarButton } from './SidebarButton';
 
 export type SidebarProps = {
   // add props here if needed
@@ -103,42 +104,9 @@ const Sidebar = () => {
           {isExpanded && <div>Analyse</div>}
         </Link>
 
-        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12, opacity: isExpanded ? 1 : 0.85, transition: 'opacity 0.2s ease' }}>
-          <ModernSwitch
-            value={theme === 'dark'}
-            onChange={() => toggleTheme()}
-            leftIcon={
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="4" fill="currentColor" />
-                <path d="M12 5V3M12 21v-2M5 12H3M21 12h-2M7 7L5.5 5.5M19 19l-1.5-1.5M7 17l-1.5 1.5M19 5l-1.5 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            }
-            rightIcon={
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z" fill="currentColor" />
-              </svg>
-            }
-            label={isExpanded ? (theme === 'dark' ? 'Dunkel' : 'Hell') : undefined}
-          />
-
-          <ModernSwitch
-            value={collapsed}
-            onChange={(v) => {
-              setCollapsed(v);
-              if (!v) setHovered(false);
-            }}
-            leftIcon={
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 4l-6 8 6 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-            rightIcon={
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 20l6-8-6-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-            label={isExpanded ? 'Sidebar' : undefined}
-          />
+        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <ThemeToggle value={theme} onChange={toggleTheme} />
+          <SidebarButton collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} />
         </div>
       </div>
     </div>
