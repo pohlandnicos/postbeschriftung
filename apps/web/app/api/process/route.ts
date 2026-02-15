@@ -346,6 +346,47 @@ function buildFilename(fields: {
   return name;
 }
 
+function sanitizeVendor(raw: string) {
+  let v = (raw ?? '').toString().trim();
+  if (!v) return 'UNK';
+
+  v = v.replace(/\s+/g, ' ').trim();
+
+  const parts = v.split(/\s*[|·•]\s*/g);
+  v = parts[0] ?? v;
+
+  const cutTokens = [
+    'straße',
+    'str.',
+    'strasse',
+    'weg',
+    'allee',
+    'platz',
+    'gasse',
+    'haus',
+    'postfach',
+    'plz',
+    'd-',
+    'de-',
+    'deutschland'
+  ];
+  const lower = v.toLowerCase();
+
+  let cutAt = -1;
+  for (const t of cutTokens) {
+    const idx = lower.indexOf(t);
+    if (idx !== -1) cutAt = cutAt === -1 ? idx : Math.min(cutAt, idx);
+  }
+  const mZip = lower.search(/\b\d{5}\b/);
+  if (mZip !== -1) cutAt = cutAt === -1 ? mZip : Math.min(cutAt, mZip);
+
+  if (cutAt !== -1) v = v.slice(0, cutAt).trim();
+
+  v = v.replace(/[,:;\-]+\s*$/g, '').trim();
+  if (!v) return 'UNK';
+  return v.slice(0, 80);
+}
+
 function parseNumberMaybe(v: unknown): number | null {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
   if (typeof v === 'string') {
@@ -478,19 +519,20 @@ export async function POST(req: Request) {
         }
       };
     }
+    const cleanVendor = sanitizeVendor(fields.vendor);
     const building_match = matchBuilding(fields.building_candidate, objects);
     const suggested_filename = buildFilename({
       object_number: building_match.object_number,
       date: fields.date,
       doc_type: fields.doc_type,
-      vendor: fields.vendor,
+      vendor: cleanVendor,
       amount: fields.amount
     });
 
     const result: ProcessResult = {
       file_id: id,
       doc_type: fields.doc_type,
-      vendor: fields.vendor,
+      vendor: cleanVendor,
       amount: fields.amount,
       currency: 'EUR',
       date: fields.date,
