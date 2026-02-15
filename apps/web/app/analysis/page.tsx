@@ -45,10 +45,31 @@ export default function AnalysisPage() {
     const topTypes = [...byType.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
     const topVendors = [...byVendor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
 
-    const series = [...byDay.entries()]
-      .filter(([k]) => k !== 'unknown')
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-Math.min(range === '7d' ? 7 : range === '30d' ? 30 : 60, 60));
+    const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+    const startOfDay = (t: number) => {
+      const d = new Date(t);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    };
+
+    const end = startOfDay(now);
+    let start = end;
+    if (range === '7d') start = end - 6 * 24 * 60 * 60 * 1000;
+    if (range === '30d') start = end - 29 * 24 * 60 * 60 * 1000;
+    if (range === 'all') {
+      const times = filtered
+        .map((it) => Date.parse(it.created_at))
+        .filter((t) => Number.isFinite(t))
+        .map((t) => startOfDay(t));
+      start = times.length ? Math.min(...times) : end;
+      start = Math.max(start, end - 59 * 24 * 60 * 60 * 1000);
+    }
+
+    const series: [string, number][] = [];
+    for (let t = start; t <= end; t += 24 * 60 * 60 * 1000) {
+      const k = dayKey(new Date(t));
+      series.push([k, byDay.get(k) ?? 0]);
+    }
 
     const recent = filtered.slice(0, 15);
 
@@ -257,16 +278,29 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const h = 180;
   const pad = 14;
 
+  if (!series.length) {
+    return (
+      <div style={{ width: '100%', overflow: 'hidden' }}>
+        <div style={{ height: h, borderRadius: 12, background: 'var(--panel2)', border: '1px solid var(--border_soft)' }} />
+        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
+          <div>—</div>
+          <div>—</div>
+        </div>
+      </div>
+    );
+  }
+
   const values = series.map(([, v]) => v);
   const max = Math.max(1, ...values);
 
-  const points = series
-    .map(([, v], i) => {
-      const x = pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1);
-      const y = h - pad - (v * (h - pad * 2)) / max;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  const coords = series.map(([, v], i) => {
+    const x = pad + (i * (w - pad * 2)) / Math.max(1, series.length - 1);
+    const y = h - pad - (v * (h - pad * 2)) / max;
+    return { x, y };
+  });
+  const points = coords.map((p) => `${p.x},${p.y}`).join(' ');
+  const lineD = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaD = `${lineD} L ${coords.at(-1)?.x ?? pad} ${h - pad} L ${coords[0]?.x ?? pad} ${h - pad} Z`;
 
   return (
     <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -278,11 +312,8 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           </linearGradient>
         </defs>
         <rect x="0" y="0" width={w} height={h} fill="transparent" />
-        <path
-          d={`M ${pad} ${h - pad} L ${points.replaceAll(' ', ' L ')} L ${w - pad} ${h - pad} Z`}
-          fill="url(#lineFill)"
-        />
-        <polyline points={points} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
+        <path d={areaD} fill="url(#lineFill)" />
+        <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
       </svg>
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
         <div>{series[0]?.[0] ?? '—'}</div>
