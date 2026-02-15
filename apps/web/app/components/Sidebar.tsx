@@ -42,8 +42,6 @@ const Sidebar = () => {
         flexDirection: 'column',
         transition: 'width 0.2s ease'
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       <div style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
         {isExpanded && <div style={{ fontSize: 15, fontWeight: 800 }}>Postbeschriftung</div>}
