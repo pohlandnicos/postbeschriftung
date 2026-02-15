@@ -276,6 +276,7 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
   const w = 640;
   const h = 180;
   const pad = 14;
+  const yTicks = 4;
 
   if (!series.length) {
     return (
@@ -311,6 +312,19 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
           </linearGradient>
         </defs>
         <rect x="0" y="0" width={w} height={h} fill="transparent" />
+
+        {Array.from({ length: yTicks + 1 }).map((_, i) => {
+          const v = Math.round((max * (yTicks - i)) / yTicks);
+          const y = pad + ((h - pad * 2) * i) / yTicks;
+          return (
+            <g key={i}>
+              <line x1={pad} y1={y} x2={w - pad} y2={y} stroke="var(--border_soft)" strokeWidth="1" />
+              <text x={pad} y={y - 4} fontSize="10" fill="currentColor" opacity="0.6">
+                {v}
+              </text>
+            </g>
+          );
+        })}
         <path d={areaD} fill="url(#lineFill)" />
         <path d={lineD} fill="none" stroke="rgba(37, 99, 235, 0.9)" strokeWidth="2" />
 
@@ -323,10 +337,33 @@ function MiniLineChart({ series }: { series: [string, number][] }) {
             fill="rgba(37, 99, 235, 0.95)"
           />
         ))}
+
+        {coords.map((p, idx) => {
+          const label = series[idx]?.[0] ?? '';
+          const v = series[idx]?.[1] ?? 0;
+          return (
+            <circle
+              key={`hit-${idx}`}
+              cx={p.x}
+              cy={p.y}
+              r={10}
+              fill="transparent"
+            >
+              <title>
+                {label}: {v}
+              </title>
+            </circle>
+          );
+        })}
       </svg>
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, opacity: 0.75 }}>
         <div>{series[0]?.[0] ?? '—'}</div>
-        <div>{series.at(-1)?.[0] ?? '—'}</div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ padding: '2px 8px', borderRadius: 999, border: '1px solid var(--border_soft)', background: 'var(--panel2)' }}>
+            Heute: {series.at(-1)?.[1] ?? 0}
+          </div>
+          <div>{series.at(-1)?.[0] ?? '—'}</div>
+        </div>
       </div>
     </div>
   );
