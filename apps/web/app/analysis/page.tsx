@@ -150,41 +150,40 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12 }}>
-        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>Verarbeitete Dateien</div>
-              <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+      <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Verarbeitete Dateien</div>
+                <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
             </div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>{range === 'all' ? 'Letzte 60 Tage' : range}</div>
+            <div style={{ marginTop: 12 }}>
+              <MiniLineChart series={stats.series} />
+            </div>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <MiniLineChart series={stats.series} />
+          <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Zeit gespart (30s pro Dokument)</div>
+                <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <MiniLineChart series={stats.timeSeries} />
+            </div>
           </div>
         </div>
 
-        <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>Zeit gespart (30s pro Dokument)</div>
-              <div style={{ marginTop: 4, fontSize: 16, fontWeight: 800 }}>Zeitverlauf</div>
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>Gesamt: {stats.timeLabel}</div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <MiniLineChart series={stats.timeSeries} />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Kpi title="Dateien" value={String(stats.count)} />
-            <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
-            <Kpi title="OCR" value={String(stats.usedOpenAI)} />
-            <Kpi title="Textlayer" value={String(stats.withTextLayer)} />
-            <Kpi title="Zeit gespart" value={stats.timeLabel} />
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <Kpi title="Dateien" value={String(stats.count)} />
+          <Kpi title="Seiten" value={stats.pagesKnown ? String(stats.totalPages) : '—'} />
+          <Kpi title="OCR" value={String(stats.usedOpenAI)} />
+          <Kpi title="Textlayer" value={String(stats.withTextLayer)} />
+          <Kpi title="Zeit gespart" value={stats.timeLabel} />
 
           <div style={{ border: '1px solid var(--border_soft)', borderRadius: 14, background: 'var(--panel)', padding: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -215,7 +214,7 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12 }}>
         <Panel title="Dokumenttypen">
           {stats.topTypes.length ? (
             <div style={{ display: 'grid', gap: 8 }}>
