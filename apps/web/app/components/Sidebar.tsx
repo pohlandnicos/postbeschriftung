@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ToggleButton } from './ToggleButton';
+import { IconButton } from './IconButton';
 
 export type SidebarProps = {
   // add props here if needed
@@ -103,24 +103,11 @@ const Sidebar = () => {
         </Link>
 
         <div style={{ marginTop: 'auto', padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <ToggleButton
-            value={theme === 'dark'}
-            onChange={() => toggleTheme()}
-            label={isExpanded ? 'Theme' : undefined}
-            leftIcon={
+          <IconButton
+            icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
-                  d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
-            rightIcon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z"
+                  d={theme === 'dark' ? 'M12 3a7.5 7.5 0 0 0 9 9 9 9 0 1 1-9-9z' : 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 5V3M12 21v-2M5 12H3M21 12h-2M7 7L5.5 5.5M19 19l-1.5-1.5M7 17l-1.5 1.5M19 5l-1.5 1.5'}
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -128,16 +115,16 @@ const Sidebar = () => {
                 />
               </svg>
             }
+            label={isExpanded ? (theme === 'dark' ? 'Hell' : 'Dunkel') : undefined}
+            active={theme === 'dark'}
+            onClick={toggleTheme}
           />
 
-          <ToggleButton
-            value={collapsed}
-            onChange={setCollapsed}
-            label={isExpanded ? 'Sidebar' : undefined}
-            leftIcon={
+          <IconButton
+            icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
-                  d="M11 19l-6-6 6-6"
+                  d={collapsed ? 'M9 20l6-8-6-8' : 'M15 4l-6 8 6 8'}
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -145,19 +132,9 @@ const Sidebar = () => {
                 />
               </svg>
             }
-            rightIcon={
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M13 19l6-6-6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            }
-            threeState
-            onHover={setHovered}
+            label={isExpanded ? (collapsed ? 'Öffnen' : 'Schließen') : undefined}
+            active={!collapsed}
+            onClick={() => setCollapsed(!collapsed)}
           />
         </div>
       </div>
