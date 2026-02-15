@@ -119,6 +119,34 @@ export default function AnalysisPage() {
     return parts.join(' · ');
   }, [docType, objectNumber, range, vendor]);
 
+  const objectOptions = useMemo(() => {
+    const opts = (data?.facets.objects ?? []).map((o) => ({
+      value: o.object_number ?? '',
+      label: o.object_number ? `#${o.object_number}` : 'Ohne Objekt',
+      subLabel: o.label ? `${o.label} (${o.count})` : `(${o.count})`
+    }));
+    return [{ value: '', label: 'Alle Gebäude', subLabel: '' }, ...opts];
+  }, [data?.facets.objects]);
+
+  const docTypeOptions = useMemo(() => {
+    const opts = (data?.facets.doc_types ?? []).map((t) => ({ value: t, label: t, subLabel: '' }));
+    return [{ value: '', label: 'Alle Arten', subLabel: '' }, ...opts];
+  }, [data?.facets.doc_types]);
+
+  const vendorOptions = useMemo(() => {
+    const opts = (data?.facets.vendors ?? []).map((v) => ({ value: v, label: v, subLabel: '' }));
+    return [{ value: '', label: 'Alle Lieferanten', subLabel: '' }, ...opts];
+  }, [data?.facets.vendors]);
+
+  const rangeOptions = useMemo(
+    () => [
+      { value: '7d', label: 'Letzte 7 Tage', subLabel: '' },
+      { value: '30d', label: 'Letzte 30 Tage', subLabel: '' },
+      { value: 'all', label: 'Alles', subLabel: '' }
+    ],
+    []
+  );
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
       <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
@@ -161,38 +189,17 @@ export default function AnalysisPage() {
               gap: 10
             }}
           >
-            <LabeledSelect label="Gebäude" value={objectNumber} onChange={setObjectNumber}>
-              <option value="">Alle Gebäude</option>
-              {(data?.facets.objects ?? []).map((o) => (
-                <option key={o.object_number ?? 'none'} value={o.object_number ?? ''}>
-                  {(o.object_number ? `#${o.object_number}` : 'Ohne Objekt') + (o.label ? ` — ${o.label}` : '')} ({o.count})
-                </option>
-              ))}
-            </LabeledSelect>
-
-            <LabeledSelect label="Dokument-Art" value={docType} onChange={setDocType}>
-              <option value="">Alle Arten</option>
-              {(data?.facets.doc_types ?? []).map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </LabeledSelect>
-
-            <LabeledSelect label="Lieferant" value={vendor} onChange={setVendor}>
-              <option value="">Alle Lieferanten</option>
-              {(data?.facets.vendors ?? []).map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </LabeledSelect>
-
-            <LabeledSelect label="Zeitraum" value={range} onChange={(v) => setRange(v as any)}>
-              <option value="7d">Letzte 7 Tage</option>
-              <option value="30d">Letzte 30 Tage</option>
-              <option value="all">Alles</option>
-            </LabeledSelect>
+            <LabeledComboBox label="Gebäude" value={objectNumber} options={objectOptions} onChange={setObjectNumber} placeholder="Gebäude suchen…" />
+            <LabeledComboBox label="Dokument-Art" value={docType} options={docTypeOptions} onChange={setDocType} placeholder="Art suchen…" />
+            <LabeledComboBox label="Lieferant" value={vendor} options={vendorOptions} onChange={setVendor} placeholder="Lieferant suchen…" />
+            <LabeledComboBox
+              label="Zeitraum"
+              value={range}
+              options={rangeOptions}
+              onChange={(v) => setRange(v as any)}
+              placeholder="Zeitraum…"
+              searchable={false}
+            />
           </div>
         </div>
       </div>
@@ -407,42 +414,173 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function LabeledSelect(props: {
+type ComboOption = { value: string; label: string; subLabel?: string };
+
+function LabeledComboBox(props: {
   label: string;
   value: string;
+  options: ComboOption[];
   onChange: (v: string) => void;
-  children: React.ReactNode;
+  placeholder: string;
+  searchable?: boolean;
 }) {
+  const { label, value, options, onChange, placeholder, searchable = true } = props;
+
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (searchable) inputRef.current?.focus();
+  }, [open, searchable]);
+
+  const current = useMemo(() => options.find((o) => o.value === value) ?? options[0], [options, value]);
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq || !searchable) return options;
+    return options.filter((o) => {
+      const a = (o.label ?? '').toLowerCase();
+      const b = (o.subLabel ?? '').toLowerCase();
+      return a.includes(qq) || b.includes(qq) || String(o.value).toLowerCase().includes(qq);
+    });
+  }, [options, q, searchable]);
+
   return (
-    <label style={{ display: 'grid', gap: 6 }}>
-      <div style={{ fontSize: 12, opacity: 0.75 }}>{props.label}</div>
-      <select
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
+    <div ref={wrapRef} style={{ display: 'grid', gap: 6, position: 'relative' }}>
+      <div style={{ fontSize: 12, opacity: 0.75 }}>{label}</div>
+
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+          setQ('');
+        }}
         style={{
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          MozAppearance: 'none',
+          width: '100%',
+          textAlign: 'left',
           padding: '9px 38px 9px 10px',
           borderRadius: 12,
           border: '1px solid var(--border_soft)',
           background: 'var(--panel2)',
           color: 'inherit',
           fontSize: 12,
-          width: '100%',
-          outline: 'none',
-          boxShadow: 'none',
-          backgroundImage:
-            'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Cpolyline points=\"6 9 12 15 18 9\"/%3E%3C/svg%3E")',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'right 12px center',
-          backgroundSize: '16px 16px',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis'
         }}
       >
-        {props.children}
-      </select>
-    </label>
+        {current?.label ?? placeholder}
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            right: 10,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 18,
+            height: 18,
+            opacity: 0.7,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            backgroundSize: '18px 18px',
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Cpolyline points=\"6 9 12 15 18 9\"/%3E%3C/svg%3E")'
+          }}
+        />
+      </button>
+
+      {open ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            border: '1px solid var(--border)',
+            background: 'var(--bg)',
+            borderRadius: 14,
+            boxShadow: '0 18px 46px rgba(0,0,0,0.18)',
+            overflow: 'hidden'
+          }}
+        >
+          {searchable ? (
+            <div style={{ padding: 10, borderBottom: '1px solid var(--border_soft)', background: 'var(--panel)' }}>
+              <input
+                ref={inputRef}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={placeholder}
+                style={{
+                  width: '100%',
+                  padding: '9px 10px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border_soft)',
+                  background: 'var(--panel2)',
+                  color: 'inherit',
+                  fontSize: 12,
+                  outline: 'none'
+                }}
+              />
+            </div>
+          ) : null}
+
+          <div style={{ maxHeight: 280, overflow: 'auto', padding: 6 }}>
+            {filtered.length ? (
+              filtered.map((o) => {
+                const active = o.value === value;
+                return (
+                  <button
+                    key={`${o.value}-${o.label}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(o.value);
+                      setOpen(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '9px 10px',
+                      borderRadius: 12,
+                      border: '1px solid transparent',
+                      background: active ? 'rgba(37, 99, 235, 0.10)' : 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: active ? 800 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.label}
+                      </div>
+                      {active ? <div style={{ fontSize: 12, opacity: 0.7 }}>aktiv</div> : null}
+                    </div>
+                    {o.subLabel ? <div style={{ marginTop: 2, fontSize: 12, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.subLabel}</div> : null}
+                  </button>
+                );
+              })
+            ) : (
+              <div style={{ padding: 10, fontSize: 13, opacity: 0.75 }}>Keine Treffer.</div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
