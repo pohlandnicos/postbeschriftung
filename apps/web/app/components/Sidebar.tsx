@@ -89,7 +89,7 @@ const Sidebar = () => {
         </Link>
       </div>
 
-      <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', padding: '12px 8px', display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--border_soft)' }}>
+      <div style={{ position: 'absolute', left: 0, bottom: 0, width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--border_soft)' }}>
         <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
       </div>
     </div>

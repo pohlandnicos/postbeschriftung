@@ -18,8 +18,8 @@ export function SidebarIcon({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 24,
-        height: 24,
+        width: 32,
+        height: 32,
         opacity: 0.7,
         transition: 'opacity 0.2s ease'
       }}
@@ -30,17 +30,13 @@ export function SidebarIcon({
         e.currentTarget.style.opacity = '0.7';
       }}
     >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path
-          d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"
+          d="M10 4H22C24.2091 4 26 5.79086 26 8V24C26 26.2091 24.2091 28 22 28H10C7.79086 28 6 26.2091 6 24V8C6 5.79086 7.79086 4 10 4Z"
           stroke="currentColor"
           strokeWidth="1.5"
         />
-        <path
-          d="M9 4.5v15"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
+        <line x1="12" y1="4" x2="12" y2="28" stroke="currentColor" strokeWidth="1.5" />
       </svg>
     </button>
   );
