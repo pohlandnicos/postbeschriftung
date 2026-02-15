@@ -132,21 +132,6 @@ export default function AnalysisPage() {
             <option value="30d">Letzte 30 Tage</option>
             <option value="all">Alles</option>
           </select>
-          <a
-            href="/"
-            style={{
-              textDecoration: 'none',
-              padding: '8px 10px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'inherit',
-              fontSize: 12
-            }}
-          >
-            Zurück
-          </a>
-          <ThemeToggle />
         </div>
       </div>
 

@@ -148,26 +148,6 @@ export default function Page() {
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Postbeschriftung</div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <a
-              href="/analysis"
-              style={{
-                textDecoration: 'none',
-                padding: '8px 10px',
-                borderRadius: 10,
-                border: '1px solid var(--border)',
-                background: 'transparent',
-                color: 'inherit',
-                fontSize: 12
-              }}
-            >
-              Analyse
-            </a>
-            <ThemeToggle />
-          </div>
-        </div>
         <div style={{ fontSize: 13, opacity: 0.75 }}>
           Upload PDF, automatische Erkennung (Dokumenttyp/Lieferant/Betrag/Gebäude), Vorschlag Dateiname, Download.
         </div>
