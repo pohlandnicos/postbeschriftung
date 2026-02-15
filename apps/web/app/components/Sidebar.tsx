@@ -2,8 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { ThemeSwitch } from './ThemeSwitch';
+import { useState } from 'react';
 import { SidebarIcon } from './SidebarIcon';
 
 export type SidebarProps = {
@@ -28,64 +27,71 @@ const Sidebar = () => {
         transition: 'width 0.2s ease'
       }}
     >
-      <div style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {isExpanded && <div style={{ fontSize: 15, fontWeight: 800 }}>Postbeschriftung</div>}
-      </div>
+      <div style={{ flex: 1, padding: '8px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Link
+            href="/"
+            style={{
+              textDecoration: 'none',
+              color: 'inherit',
+              padding: '6px 10px',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: pathname === '/' ? 'var(--panel2)' : 'transparent',
+              transition: 'background 0.2s ease',
+              fontSize: 13
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M3 7v10a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4V7a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 7h18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {isExpanded && <div>Neue Post</div>}
+          </Link>
 
-      <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <Link
-          href="/"
-          style={{
-            textDecoration: 'none',
-            color: 'inherit',
-            padding: '10px 12px',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: pathname === '/' ? 'var(--panel2)' : undefined,
-            border: `1px solid ${pathname === '/' ? 'var(--border)' : 'transparent'}`
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M11 14h2v7h-2v-7zm-6-3h2v10H5V11zm12 5h2v5h-2v-5zM4 3h16l2 4H2z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {isExpanded && <div>Neue Post</div>}
-        </Link>
+          <Link
+            href="/analysis"
+            style={{
+              textDecoration: 'none',
+              color: 'inherit',
+              padding: '6px 10px',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: pathname === '/analysis' ? 'var(--panel2)' : 'transparent',
+              transition: 'background 0.2s ease',
+              fontSize: 13
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M3 3v16h18M7 11l4-4 4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {isExpanded && <div>Analyse</div>}
+          </Link>
+        </div>
 
-        <Link
-          href="/analysis"
-          style={{
-            textDecoration: 'none',
-            color: 'inherit',
-            padding: '10px 12px',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: pathname === '/analysis' ? 'var(--panel2)' : undefined,
-            border: `1px solid ${pathname === '/analysis' ? 'var(--border)' : 'transparent'}`
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M3 3v16h18M7 11l4-4 4 4 4-4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {isExpanded && <div>Analyse</div>}
-        </Link>
-
-        <div style={{ marginTop: 'auto', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'center' }}>
           <SidebarIcon onClick={() => setCollapsed(!collapsed)} />
         </div>
       </div>
