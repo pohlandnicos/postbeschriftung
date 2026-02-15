@@ -42,6 +42,8 @@ type AnalyticsResponse = {
 
 export default function AnalysisPage() {
   const [range, setRange] = useState<'7d' | '30d' | 'all'>('7d');
+  const [from, setFrom] = useState<string | null>(null);
+  const [to, setTo] = useState<string | null>(null);
   const [objectNumber, setObjectNumber] = useState<string>('');
   const [docType, setDocType] = useState<string>('');
   const [vendor, setVendor] = useState<string>('');
@@ -62,6 +64,8 @@ export default function AnalysisPage() {
         if (docType) qs.set('doc_type', docType);
         if (vendor) qs.set('vendor', vendor);
         if (employee) qs.set('employee', employee);
+        if (from) qs.set('from', from);
+        if (to) qs.set('to', to);
 
         const res = await fetch(`/api/analytics?${qs.toString()}`, { signal: ctrl.signal });
         if (!res.ok) throw new Error(await res.text());
@@ -78,7 +82,7 @@ export default function AnalysisPage() {
 
     void run();
     return () => ctrl.abort();
-  }, [range, objectNumber, docType, vendor, employee]);
+  }, [range, objectNumber, docType, vendor, employee, from, to]);
 
   const stats = useMemo(() => {
     const count = data?.totals.documents ?? 0;
@@ -120,9 +124,15 @@ export default function AnalysisPage() {
     if (docType) parts.push(docType);
     if (vendor) parts.push(vendor);
     if (employee) parts.push(employee);
-    parts.push(range === 'all' ? 'Zeitraum: Alles' : range === '7d' ? 'Zeitraum: 7 Tage' : 'Zeitraum: 30 Tage');
+    if (from || to) {
+      const f = from ? new Date(from).toLocaleDateString() : '…';
+      const t = to ? new Date(to).toLocaleDateString() : '…';
+      parts.push(`Zeitraum: ${f} – ${t}`);
+    } else {
+      parts.push(range === 'all' ? 'Zeitraum: Alles' : range === '7d' ? 'Zeitraum: 7 Tage' : 'Zeitraum: 30 Tage');
+    }
     return parts.join(' · ');
-  }, [docType, objectNumber, range, vendor, employee]);
+  }, [docType, objectNumber, range, vendor, employee, from, to]);
 
   const objectOptions = useMemo(() => {
     const opts = (data?.facets.objects ?? []).map((o) => ({
@@ -148,18 +158,14 @@ export default function AnalysisPage() {
     return [{ value: '', label: 'Alle Mitarbeiter', subLabel: '' }, ...opts];
   }, [data?.facets.employees]);
 
-  const rangeOptions = useMemo(
-    () => [
-      { value: '7d', label: 'Letzte 7 Tage', subLabel: '' },
-      { value: '30d', label: 'Letzte 30 Tage', subLabel: '' },
-      { value: 'all', label: 'Alles', subLabel: '' }
-    ],
-    []
-  );
-
   const rangeLabel = useMemo(() => {
+    if (from || to) {
+      const f = from ? new Date(from).toLocaleDateString() : '…';
+      const t = to ? new Date(to).toLocaleDateString() : '…';
+      return `${f} – ${t}`;
+    }
     return range === 'all' ? 'Alles' : range === '7d' ? 'Letzte 7 Tage' : 'Letzte 30 Tage';
-  }, [range]);
+  }, [range, from, to]);
 
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '28px 18px 80px' }}>
@@ -176,12 +182,19 @@ export default function AnalysisPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <div style={{ fontWeight: 800 }}>Filter</div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <HeaderComboBox
-                value={range}
-                options={rangeOptions}
-                onChange={(v) => setRange(v as any)}
-                leftIcon="calendar"
-                ariaLabel="Zeitraum"
+              <DateRangePicker
+                range={range}
+                from={from}
+                to={to}
+                onPreset={(r) => {
+                  setFrom(null);
+                  setTo(null);
+                  setRange(r);
+                }}
+                onApply={(next) => {
+                  setFrom(next.from);
+                  setTo(next.to);
+                }}
               />
               <button
                 onClick={() => {
@@ -189,6 +202,8 @@ export default function AnalysisPage() {
                   setDocType('');
                   setVendor('');
                   setEmployee('');
+                  setFrom(null);
+                  setTo(null);
                   setRange('7d');
                 }}
                 style={{
@@ -604,16 +619,27 @@ function LabeledComboBox(props: {
   );
 }
 
-function HeaderComboBox(props: {
-  value: string;
-  options: ComboOption[];
-  onChange: (v: string) => void;
-  leftIcon?: 'calendar';
-  ariaLabel: string;
+function DateRangePicker(props: {
+  range: '7d' | '30d' | 'all';
+  from: string | null;
+  to: string | null;
+  onPreset: (r: '7d' | '30d' | 'all') => void;
+  onApply: (next: { from: string | null; to: string | null }) => void;
 }) {
-  const { value, options, onChange, leftIcon, ariaLabel } = props;
+  const { range, from, to, onPreset, onApply } = props;
+
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
+
+  const today = useMemo(() => new Date(), []);
+  const [view, setView] = useState(() => ({ y: today.getFullYear(), m: today.getMonth() }));
+  const [draftStart, setDraftStart] = useState<string | null>(from);
+  const [draftEnd, setDraftEnd] = useState<string | null>(to);
+
+  useEffect(() => {
+    setDraftStart(from);
+    setDraftEnd(to);
+  }, [from, to]);
 
   useEffect(() => {
     if (!open) return;
@@ -627,17 +653,42 @@ function HeaderComboBox(props: {
     return () => window.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  const current = useMemo(() => options.find((o) => o.value === value) ?? options[0], [options, value]);
-  const iconSvg =
-    leftIcon === 'calendar'
-      ? 'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Crect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/%3E%3Cline x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/%3E%3Cline x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/%3E%3Cline x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/%3E%3C/svg%3E")'
-      : null;
+  const label = useMemo(() => {
+    if (from || to) {
+      const f = from ? new Date(from).toLocaleDateString() : '…';
+      const t = to ? new Date(to).toLocaleDateString() : '…';
+      return `${f} – ${t}`;
+    }
+    return range === 'all' ? 'Alles' : range === '7d' ? 'Letzte 7 Tage' : 'Letzte 30 Tage';
+  }, [range, from, to]);
+
+  const monthLabel = useMemo(() => {
+    const d = new Date(Date.UTC(view.y, view.m, 1));
+    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }, [view.m, view.y]);
+
+  const days = useMemo(() => buildCalendar(view.y, view.m), [view.y, view.m]);
+
+  const startMs = draftStart ? Date.parse(draftStart) : null;
+  const endMs = draftEnd ? Date.parse(draftEnd) : null;
+
+  const isInRange = (iso: string) => {
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return false;
+    if (startMs !== null && endMs !== null) return t >= startMs && t <= endMs;
+    if (startMs !== null) return t === startMs;
+    return false;
+  };
+
+  const isEdge = (iso: string) => {
+    const t = Date.parse(iso);
+    return (startMs !== null && t === startMs) || (endMs !== null && t === endMs);
+  };
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
         type="button"
-        aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
         style={{
           padding: '7px 10px',
@@ -652,13 +703,18 @@ function HeaderComboBox(props: {
           gap: 8
         }}
       >
-        {iconSvg ? (
-          <span
-            aria-hidden
-            style={{ width: 16, height: 16, backgroundImage: iconSvg, backgroundSize: '16px 16px', backgroundRepeat: 'no-repeat' }}
-          />
-        ) : null}
-        <span>{current?.label ?? ''}</span>
+        <span
+          aria-hidden
+          style={{
+            width: 16,
+            height: 16,
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%239CA3AF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"%3E%3Crect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/%3E%3Cline x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/%3E%3Cline x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/%3E%3Cline x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/%3E%3C/svg%3E")',
+            backgroundSize: '16px 16px',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
+        <span>{label}</span>
       </button>
 
       {open ? (
@@ -667,48 +723,267 @@ function HeaderComboBox(props: {
             position: 'absolute',
             right: 0,
             top: 'calc(100% + 8px)',
-            zIndex: 60,
-            minWidth: 220,
+            zIndex: 80,
+            width: 520,
+            maxWidth: 'calc(100vw - 40px)',
             border: '1px solid var(--border)',
             background: 'var(--bg)',
-            borderRadius: 14,
-            boxShadow: '0 18px 46px rgba(0,0,0,0.18)',
+            borderRadius: 16,
+            boxShadow: '0 18px 46px rgba(0,0,0,0.20)',
             overflow: 'hidden'
           }}
         >
-          <div style={{ padding: 6 }}>
-            {options.map((o) => {
-              const active = o.value === value;
-              return (
+          <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr' }}>
+            <div style={{ padding: 12, borderRight: '1px solid var(--border_soft)', background: 'var(--panel)' }}>
+              <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10 }}>Quick</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {(
+                  [
+                    { key: '7d' as const, label: 'Letzte 7 Tage' },
+                    { key: '30d' as const, label: 'Letzte 30 Tage' },
+                    { key: 'all' as const, label: 'Alles' }
+                  ]
+                ).map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => {
+                      onPreset(p.key);
+                      setOpen(false);
+                    }}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border_soft)',
+                      background: 'var(--panel2)',
+                      color: 'inherit',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginTop: 14, fontSize: 12, opacity: 0.75, marginBottom: 8 }}>Custom</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>Start</div>
+                  <input
+                    type="date"
+                    value={draftStart ? draftStart.slice(0, 10) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        setDraftStart(null);
+                        return;
+                      }
+                      setDraftStart(new Date(v + 'T00:00:00.000Z').toISOString());
+                    }}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border_soft)',
+                      background: 'var(--panel2)',
+                      color: 'inherit',
+                      fontSize: 12,
+                      outline: 'none'
+                    }}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontSize: 12, opacity: 0.75 }}>Ende</div>
+                  <input
+                    type="date"
+                    value={draftEnd ? draftEnd.slice(0, 10) : ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        setDraftEnd(null);
+                        return;
+                      }
+                      // end of day UTC
+                      setDraftEnd(new Date(v + 'T23:59:59.999Z').toISOString());
+                    }}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border_soft)',
+                      background: 'var(--panel2)',
+                      color: 'inherit',
+                      fontSize: 12,
+                      outline: 'none'
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ padding: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                <div style={{ fontWeight: 800 }}>{monthLabel}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.UTC(view.y, view.m, 1));
+                      d.setUTCMonth(d.getUTCMonth() - 1);
+                      setView({ y: d.getUTCFullYear(), m: d.getUTCMonth() });
+                    }}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 12,
+                      border: '1px solid var(--border_soft)',
+                      background: 'var(--panel2)',
+                      color: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.UTC(view.y, view.m, 1));
+                      d.setUTCMonth(d.getUTCMonth() + 1);
+                      setView({ y: d.getUTCFullYear(), m: d.getUTCMonth() });
+                    }}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 12,
+                      border: '1px solid var(--border_soft)',
+                      background: 'var(--panel2)',
+                      color: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, fontSize: 12, opacity: 0.7, marginBottom: 6 }}>
+                {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => (
+                  <div key={d} style={{ textAlign: 'center' }}>
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                {days.map((cell, idx) => {
+                  if (!cell) return <div key={idx} />;
+                  const active = isEdge(cell.iso);
+                  const inRange = isInRange(cell.iso);
+                  const muted = !cell.inMonth;
+                  return (
+                    <button
+                      key={cell.iso}
+                      type="button"
+                      onClick={() => {
+                        const isoStart = new Date(cell.iso.slice(0, 10) + 'T00:00:00.000Z').toISOString();
+                        const isoEnd = new Date(cell.iso.slice(0, 10) + 'T23:59:59.999Z').toISOString();
+
+                        if (!draftStart || (draftStart && draftEnd)) {
+                          setDraftStart(isoStart);
+                          setDraftEnd(null);
+                          return;
+                        }
+
+                        const start = Date.parse(draftStart);
+                        const picked = Date.parse(isoStart);
+                        if (picked < start) {
+                          setDraftEnd(new Date(draftStart.slice(0, 10) + 'T23:59:59.999Z').toISOString());
+                          setDraftStart(isoStart);
+                        } else {
+                          setDraftEnd(isoEnd);
+                        }
+                      }}
+                      style={{
+                        height: 34,
+                        borderRadius: 12,
+                        border: '1px solid var(--border_soft)',
+                        background: active ? 'rgba(37, 99, 235, 0.22)' : inRange ? 'rgba(37, 99, 235, 0.10)' : 'var(--panel2)',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        opacity: muted ? 0.45 : 1,
+                        fontWeight: active ? 900 : 600
+                      }}
+                    >
+                      {cell.day}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button
-                  key={`${o.value}-${o.label}`}
                   type="button"
                   onClick={() => {
-                    onChange(o.value);
+                    setDraftStart(from);
+                    setDraftEnd(to);
                     setOpen(false);
                   }}
                   style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '9px 10px',
+                    padding: '8px 10px',
                     borderRadius: 12,
-                    border: '1px solid transparent',
-                    background: active ? 'rgba(37, 99, 235, 0.10)' : 'transparent',
+                    border: '1px solid var(--border_soft)',
+                    background: 'var(--panel2)',
                     color: 'inherit',
                     cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: active ? 800 : 600
+                    fontSize: 12
                   }}
                 >
-                  {o.label}
+                  Cancel
                 </button>
-              );
-            })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onApply({ from: draftStart, to: draftEnd });
+                    setOpen(false);
+                  }}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(37, 99, 235, 0.35)',
+                    background: 'rgba(37, 99, 235, 0.14)',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: 12
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
     </div>
   );
+}
+
+function buildCalendar(year: number, month: number): Array<null | { iso: string; day: number; inMonth: boolean }> {
+  // Monday-first calendar grid
+  const first = new Date(Date.UTC(year, month, 1));
+  const firstDow = (first.getUTCDay() + 6) % 7; // 0=Mon
+  const start = new Date(Date.UTC(year, month, 1 - firstDow));
+
+  const out: Array<null | { iso: string; day: number; inMonth: boolean }> = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+    const iso = d.toISOString();
+    out.push({
+      iso,
+      day: d.getUTCDate(),
+      inMonth: d.getUTCMonth() === month
+    });
+  }
+  return out;
 }
 
 function Row({ k, v, onClick }: { k: string; v: number; onClick?: () => void }) {
