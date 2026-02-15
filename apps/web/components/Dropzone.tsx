@@ -4,29 +4,28 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 export function Dropzone({
-  onFile
+  onFiles
 }: {
-  onFile: (file: File) => Promise<void>;
+  onFiles: (files: File[]) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
-      const file = accepted[0];
-      if (!file) return;
+      if (!accepted.length) return;
       setBusy(true);
       try {
-        await onFile(file);
+        await onFiles(accepted);
       } finally {
         setBusy(false);
       }
     },
-    [onFile]
+    [onFiles]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    multiple: false,
+    multiple: true,
     accept: { 'application/pdf': ['.pdf'] }
   });
 
@@ -49,7 +48,7 @@ export function Dropzone({
             ? 'Verarbeitung läuft ...'
             : isDragActive
               ? 'PDF hier loslassen'
-              : 'PDF per Drag & Drop hochladen (oder klicken)'}
+              : 'PDFs per Drag & Drop hochladen (oder klicken)'}
         </div>
         <div style={{ fontSize: 13, opacity: 0.8 }}>
           Nur PDF. Max. Größe hängt von deinem Setup ab.
