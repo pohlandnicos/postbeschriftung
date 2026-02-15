@@ -8,6 +8,7 @@ import { processPdf } from '@/lib/apiClient';
 import { renderFirstPagePng } from '@/lib/pdfRender';
 import type { ProcessResult } from '@/lib/types';
 import JSZip from 'jszip';
+import { appendHistory } from '@/lib/history';
 
 type QueueItem = {
   id: string;
@@ -100,6 +101,7 @@ export default function Page() {
         prev.map((it) => (it.id === itemId ? { ...it, thumbUrl, pages: page1.pages } : it))
       );
       const r = await processPdf(file, page1.blob, page1.error, page1.ms);
+      appendHistory({ result: r, originalName: file.name, pages: page1.pages });
       setItems((prev) =>
         prev.map((it) => (it.id === itemId ? { ...it, status: 'done', result: r } : it))
       );
@@ -148,7 +150,23 @@ export default function Page() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Postbeschriftung</div>
-          <ThemeToggle />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <a
+              href="/analysis"
+              style={{
+                textDecoration: 'none',
+                padding: '8px 10px',
+                borderRadius: 10,
+                border: '1px solid var(--border)',
+                background: 'transparent',
+                color: 'inherit',
+                fontSize: 12
+              }}
+            >
+              Analyse
+            </a>
+            <ThemeToggle />
+          </div>
         </div>
         <div style={{ fontSize: 13, opacity: 0.75 }}>
           Upload PDF, automatische Erkennung (Dokumenttyp/Lieferant/Betrag/Gebäude), Vorschlag Dateiname, Download.
