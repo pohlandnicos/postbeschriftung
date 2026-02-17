@@ -118,16 +118,9 @@ function similarityScore(a: string, b: string) {
 function vendorIsLikelyReceiver(vendor: string, management: string | null, accounting: string | null) {
   const v = normalize(vendor ?? '');
   if (!v) return false;
-
-  const mgmt = management ? normalize(management) : '';
-  const acc = accounting ? normalize(accounting) : '';
-
-  const scoreMgmt = mgmt ? similarityScore(v, mgmt) : 0;
-  const scoreAcc = acc ? similarityScore(v, acc) : 0;
-  if (scoreMgmt >= 82 || scoreAcc >= 82) return true;
-
   if (v.includes('verwaltung') || v.includes('hausverwaltung')) return true;
   if (v.startsWith('weg ') || v.includes('wohnungseigent') || v.includes('eigentümergemeinschaft')) return true;
+  if (v.includes('im auftrag') || v.includes('für die')) return true;
   return false;
 }
 
@@ -177,6 +170,73 @@ function pickVendorFromHeader(text: string, management: string | null, accountin
     .sort((a, b) => b.score - a.score);
 
   return candidates[0]?.l ?? null;
+}
+
+function scoreVendorCandidatesFromText(text: string) {
+  const all = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const head = all.slice(0, 60);
+  const foot = all.slice(Math.max(0, all.length - 90));
+
+  const contactRx = /(www\.|https?:\/\/|@[a-z0-9\-]+\.|\btelefon\b|\btel\b|\bfax\b|\bmail\b)/i;
+  const vatRx = /(ust\-?id|ust\-?idnr|umsatzsteuer\-?id|vat)\b/i;
+  const ibanRx = /\biban\b|\bbic\b/i;
+  const receiverTokens = /(verwaltung|hausverwaltung|eigentümergemeinschaft|wohnungseigent|\bweg\b|im auftrag|für die|kundennr|kundennummer)/i;
+  const companyHints = /(gmbh|ag|kg|ohg|gbr|e\.?v\.?|ev|mbh|ug\b|goma)/i;
+
+  const windows = [head, foot];
+  const makeContextFlags = (lines: string[]) => {
+    const flags = new Array(lines.length).fill(0).map(() => ({ contact: false, vat: false, iban: false }));
+    for (let i = 0; i < lines.length; i++) {
+      const hasContact = contactRx.test(lines[i]);
+      const hasVat = vatRx.test(lines[i]);
+      const hasIban = ibanRx.test(lines[i]);
+      for (let j = Math.max(0, i - 4); j <= Math.min(lines.length - 1, i + 4); j++) {
+        if (hasContact) flags[j].contact = true;
+        if (hasVat) flags[j].vat = true;
+        if (hasIban) flags[j].iban = true;
+      }
+    }
+    return flags;
+  };
+
+  let best: { line: string; score: number } | null = null;
+
+  for (const lines of windows) {
+    const flags = makeContextFlags(lines);
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i].replace(/\s+/g, ' ').trim();
+      if (l.length < 3 || l.length > 80) continue;
+
+      const lower = l.toLowerCase();
+      if (receiverTokens.test(lower)) continue;
+
+      const hasHint = companyHints.test(lower);
+      const looksLikeCompany =
+        hasHint ||
+        /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l) ||
+        /[A-ZÄÖÜ][a-zäöü]{2,}/.test(l);
+      if (!looksLikeCompany) continue;
+
+      let score = 0;
+      if (hasHint) score += 18;
+      score += Math.min(8, Math.floor(l.length / 10));
+
+      if (flags[i].contact) score += 14;
+      if (flags[i].vat) score += 14;
+      if (flags[i].iban) score += 10;
+
+      if (/\bangebot\b|\brechnung\b|\blieferschein\b/i.test(l)) score -= 8;
+
+      if (!best || score > best.score) best = { line: l, score };
+    }
+  }
+
+  const confidence = best ? (best.score >= 42 ? 0.85 : best.score >= 30 ? 0.7 : best.score >= 22 ? 0.55 : 0.35) : 0.15;
+  return { vendor: best?.line ?? null, confidence };
 }
 
 async function loadVendorMap() {
@@ -242,16 +302,10 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
   }
 
   if (vendor === 'UNK') {
-    const companyHints = ['gmbh', 'ag', 'kg', 'ohg', 'gbr', 'e.v.', 'ev', 'stadtwerke', 'energie', 'gas', 'netz'];
-    const pick = lines.slice(0, 30).find((l) => {
-      const ll = l.toLowerCase();
-      if (companyHints.some((h) => ll.includes(h))) return true;
-      if (/^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l)) return true;
-      return false;
-    });
-    if (pick) {
-      vendor = pick.slice(0, 80);
-      vendor_conf = 0.35;
+    const scored = scoreVendorCandidatesFromText(text);
+    if (scored.vendor) {
+      vendor = scored.vendor.slice(0, 80);
+      vendor_conf = scored.confidence;
     }
   }
 
@@ -601,9 +655,7 @@ export async function POST(req: Request) {
 
     let finalVendor = cleanVendor;
     let finalVendorConf = fields.confidence.vendor;
-    const vendorLooksWrong = building_match.object_number
-      ? vendorIsLikelyReceiver(finalVendor, matchedManagement, matchedAccounting)
-      : false;
+    const vendorLooksWrong = vendorIsLikelyReceiver(finalVendor, matchedManagement, matchedAccounting);
 
     if ((vendorLooksWrong || finalVendorConf < 0.5) && page1Received && canUseOpenAI) {
       try {
@@ -623,12 +675,12 @@ export async function POST(req: Request) {
     }
 
     if ((vendorLooksWrong || finalVendorConf < 0.5) && finalVendor === cleanVendor) {
-      const picked = pickVendorFromHeader(text, matchedManagement, matchedAccounting);
-      if (picked) {
-        const vv = sanitizeVendor(picked);
+      const scored = scoreVendorCandidatesFromText(text);
+      if (scored.vendor) {
+        const vv = sanitizeVendor(scored.vendor);
         if (!vendorIsLikelyReceiver(vv, matchedManagement, matchedAccounting)) {
           finalVendor = vv;
-          finalVendorConf = Math.max(finalVendorConf, 0.55);
+          finalVendorConf = Math.max(finalVendorConf, scored.confidence);
         }
       }
     }
