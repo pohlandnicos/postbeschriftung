@@ -115,6 +115,70 @@ function similarityScore(a: string, b: string) {
   return Math.max(0, Math.min(100, Math.round(sim * 100)));
 }
 
+function vendorIsLikelyReceiver(vendor: string, management: string | null, accounting: string | null) {
+  const v = normalize(vendor ?? '');
+  if (!v) return false;
+
+  const mgmt = management ? normalize(management) : '';
+  const acc = accounting ? normalize(accounting) : '';
+
+  const scoreMgmt = mgmt ? similarityScore(v, mgmt) : 0;
+  const scoreAcc = acc ? similarityScore(v, acc) : 0;
+  if (scoreMgmt >= 82 || scoreAcc >= 82) return true;
+
+  if (v.includes('verwaltung') || v.includes('hausverwaltung')) return true;
+  if (v.startsWith('weg ') || v.includes('wohnungseigent') || v.includes('eigentümergemeinschaft')) return true;
+  return false;
+}
+
+function pickVendorFromHeader(text: string, management: string | null, accounting: string | null) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+
+  const blockedTokens = [
+    'verwaltung',
+    'hausverwaltung',
+    'weg',
+    'wohnungseigent',
+    'eigentümergemeinschaft',
+    'in grund',
+    'im auftrag',
+    'für die',
+    'kunden',
+    'kundennr',
+    'kundennummer'
+  ];
+
+  const companyHints = ['gmbh', 'ag', 'kg', 'ohg', 'gbr', 'e.v.', 'ev', 'goma'];
+
+  const mgmtNorm = management ? normalize(management) : '';
+  const accNorm = accounting ? normalize(accounting) : '';
+
+  const candidates = lines
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l.length >= 3 && l.length <= 80)
+    .filter((l) => {
+      const ll = l.toLowerCase();
+      if (blockedTokens.some((t) => ll.includes(t))) return false;
+      if (mgmtNorm && similarityScore(normalize(l), mgmtNorm) >= 82) return false;
+      if (accNorm && similarityScore(normalize(l), accNorm) >= 82) return false;
+      return true;
+    })
+    .map((l) => {
+      const ll = l.toLowerCase();
+      const hasHint = companyHints.some((h) => ll.includes(h));
+      const looksLikeCompany = hasHint || /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l);
+      return { l, score: (looksLikeCompany ? 10 : 0) + (hasHint ? 10 : 0) + Math.min(6, Math.floor(l.length / 12)) };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.l ?? null;
+}
+
 async function loadVendorMap() {
   try {
     const raw = await fs.readFile(getDataPath('vendor_map.json'), 'utf8');
@@ -534,18 +598,53 @@ export async function POST(req: Request) {
       : null;
     const matchedManagement = typeof (matchedObject as any)?.management === 'string' ? (matchedObject as any).management : null;
     const matchedAccounting = typeof (matchedObject as any)?.accounting === 'string' ? (matchedObject as any).accounting : null;
+
+    let finalVendor = cleanVendor;
+    let finalVendorConf = fields.confidence.vendor;
+    const vendorLooksWrong = building_match.object_number
+      ? vendorIsLikelyReceiver(finalVendor, matchedManagement, matchedAccounting)
+      : false;
+
+    if ((vendorLooksWrong || finalVendorConf < 0.5) && page1Received && canUseOpenAI) {
+      try {
+        const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const v = await visionExtractFromImage(imgBytes);
+        usedOpenAI = true;
+        if (v.vendor) {
+          const vv = sanitizeVendor(v.vendor);
+          if (!vendorIsLikelyReceiver(vv, matchedManagement, matchedAccounting)) {
+            finalVendor = vv;
+            finalVendorConf = Math.max(finalVendorConf, 0.85);
+          }
+        }
+      } catch {
+        // ignore vision errors
+      }
+    }
+
+    if ((vendorLooksWrong || finalVendorConf < 0.5) && finalVendor === cleanVendor) {
+      const picked = pickVendorFromHeader(text, matchedManagement, matchedAccounting);
+      if (picked) {
+        const vv = sanitizeVendor(picked);
+        if (!vendorIsLikelyReceiver(vv, matchedManagement, matchedAccounting)) {
+          finalVendor = vv;
+          finalVendorConf = Math.max(finalVendorConf, 0.55);
+        }
+      }
+    }
+
     const suggested_filename = buildFilename({
       object_number: building_match.object_number,
       date: fields.date,
       doc_type: fields.doc_type,
-      vendor: cleanVendor,
+      vendor: finalVendor,
       amount: fields.amount
     });
 
     const result: ProcessResult = {
       file_id: id,
       doc_type: fields.doc_type,
-      vendor: cleanVendor,
+      vendor: finalVendor,
       amount: fields.amount,
       currency: 'EUR',
       date: fields.date,
@@ -553,7 +652,7 @@ export async function POST(req: Request) {
       suggested_filename,
       confidence: {
         doc_type: fields.confidence.doc_type,
-        vendor: fields.confidence.vendor,
+        vendor: finalVendorConf,
         amount: fields.confidence.amount,
         building: fields.confidence.building
       },
@@ -565,6 +664,9 @@ export async function POST(req: Request) {
         page1_size: page1Size,
         page1_error: page1ErrStr,
         page1_ms: page1MsNum,
+        vendor_before: cleanVendor,
+        vendor_after: finalVendor,
+        vendor_receiver_guard: vendorLooksWrong,
         build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
         head: text
           .split(/\r?\n/)
