@@ -213,10 +213,20 @@ function scoreVendorCandidatesFromText(text: string) {
       const l = lines[i].replace(/\s+/g, ' ').trim();
       if (l.length < 3 || l.length > 80) continue;
 
+      const words = l.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
+      const lowerLetters = (l.match(/[a-zäöüß]/g) ?? []).length;
+      const upperLetters = (l.match(/[A-ZÄÖÜ]/g) ?? []).length;
+      const hasSentencePunct = /[,:;!?]/.test(l);
+
       if (politePhraseRx.test(l)) continue;
 
       const lower = l.toLowerCase();
       if (receiverTokens.test(lower)) continue;
+
+      if (/(grundlage|leistungen|ausführungstermin|ausfuehrungstermin|nach absprache|vob\b|angebot\s+\w+)/i.test(lower)) {
+        continue;
+      }
 
       const hasHint = companyHints.test(lower);
 
@@ -228,6 +238,12 @@ function scoreVendorCandidatesFromText(text: string) {
       const hasSenderContext = flags[i].contact || flags[i].vat || flags[i].iban;
       const looksLikeCompany = hasHint || allCapsish || hasSenderContext;
       if (!looksLikeCompany) continue;
+
+      if (!hasHint && !allCapsish) {
+        if (wordCount >= 8) continue;
+        if (hasSentencePunct && wordCount >= 6) continue;
+        if (lowerLetters > 0 && upperLetters > 0 && lowerLetters / Math.max(1, lowerLetters + upperLetters) > 0.55) continue;
+      }
 
       // Avoid selecting lines that are obviously not a company name
       if (/\bwir\b|\buns\b|\bfür\b|\bihre\b/i.test(l) && !hasHint && !allCapsish) continue;
@@ -273,6 +289,8 @@ async function loadObjects() {
       object_number: r.object_number,
       building_name: r.building_name ?? '',
       street: r.street ?? '',
+      postal_code: r.postal_code ?? '',
+      city: r.city ?? '',
       management: r.management ?? '',
       accounting: r.accounting ?? '',
       aliases: Array.isArray(r.aliases) ? (r.aliases as string[]) : []
@@ -463,7 +481,10 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
   };
 }
 
-function matchBuilding(candidate: string | null, objects: Array<{ object_number: string; building_name: string; street: string; aliases: string[] }>) {
+function matchBuilding(
+  candidate: string | null,
+  objects: Array<{ object_number: string; building_name: string; street: string; postal_code: string; city: string; aliases: string[] }>
+) {
   if (!candidate) {
     return { object_number: null, matched_label: null, score: null };
   }
@@ -483,14 +504,20 @@ function matchBuilding(candidate: string | null, objects: Array<{ object_number:
 
   let best = { object_number: null as string | null, matched_label: null as string | null, score: 0 };
   for (const o of objects) {
-    const label = `${o.building_name} ${o.street}`.trim();
-    const score = similarityScore(candNorm, label);
+    const streetNorm = normalize(o.street);
+    const zipNorm = normalize(o.postal_code);
+    const cityNorm = normalize(o.city);
+    const label = `${o.building_name} ${o.street} ${o.postal_code} ${o.city}`.trim();
+
+    let score = similarityScore(candNorm, label);
+    if (streetNorm && candNorm.includes(streetNorm)) score = Math.max(score, 92);
+    if (zipNorm && candNorm.includes(zipNorm) && cityNorm && candNorm.includes(cityNorm)) score = Math.max(score, 95);
     if (score > best.score) {
       best = { object_number: o.object_number, matched_label: label, score };
     }
   }
 
-  if (best.score >= 90) return best;
+  if (best.score >= 82) return best;
   return { object_number: null, matched_label: best.matched_label, score: best.score };
 }
 
@@ -518,6 +545,10 @@ function sanitizeVendor(raw: string) {
   if (!v) return 'UNK';
 
   v = v.replace(/\s+/g, ' ').trim();
+
+  if (v.split(/\s+/).filter(Boolean).length >= 10) {
+    return 'UNK';
+  }
 
   const parts = v.split(/\s*[|·•]\s*/g);
   v = parts[0] ?? v;
