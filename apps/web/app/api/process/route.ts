@@ -53,6 +53,10 @@ function normalize(s: string) {
     .trim();
 }
 
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function parseObjectsCsv(csvText: string) {
   const lines = csvText
     .split(/\r?\n/)
@@ -363,7 +367,8 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
-  const head = lines.slice(0, 30).join('\n').toLowerCase();
+  const headRaw = lines.slice(0, 30).join('\n');
+  const head = headRaw.toLowerCase();
 
   let doc_type = 'Dokument';
   let doc_conf = 0.3;
@@ -380,12 +385,21 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
 
   let vendor = 'UNK';
   let vendor_conf = 0.15;
+  const headSenderContextRx = /(www\.|https?:\/\/|@[a-z0-9\-]+\.|\btelefon\b|\btel\b|\bfax\b|\bmail\b|ust\-?id|ust\-?idnr|umsatzsteuer\-?id|vat|\biban\b|\bbic\b)/i;
+  const hasHeadSenderContext = headSenderContextRx.test(headRaw);
   for (const [k, v] of Object.entries(vendorMap)) {
-    if (k.toLowerCase() && head.includes(k.toLowerCase())) {
-      vendor = v;
-      vendor_conf = 0.85;
-      break;
-    }
+    const key = (k ?? '').toString().trim().toLowerCase();
+    if (!key) continue;
+
+    const isShort = key.length <= 3;
+    const rx = new RegExp(`(?:^|[^a-z0-9äöüß])${escapeRegExp(key)}(?:$|[^a-z0-9äöüß])`, 'i');
+    if (!rx.test(headRaw)) continue;
+
+    if (isShort && !hasHeadSenderContext) continue;
+
+    vendor = v;
+    vendor_conf = 0.85;
+    break;
   }
 
   if (vendor === 'UNK') {
