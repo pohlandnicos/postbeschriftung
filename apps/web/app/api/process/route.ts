@@ -786,9 +786,17 @@ export async function POST(req: Request) {
         page1_size: page1Size,
         page1_error: page1ErrStr,
         page1_ms: page1MsNum,
+        doc_type_raw: fields.doc_type,
+        doc_type_conf: fields.confidence.doc_type,
+        vendor_raw: fields.vendor,
+        vendor_conf: fields.confidence.vendor,
         vendor_before: cleanVendor,
         vendor_after: finalVendor,
         vendor_receiver_guard: vendorLooksWrong,
+        building_candidate: fields.building_candidate,
+        building_score: building_match.score,
+        building_object_number: building_match.object_number,
+        building_matched_label: building_match.matched_label,
         build_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
         head: text
           .split(/\r?\n/)
