@@ -145,6 +145,23 @@ function pickVendorFromHeader(text: string, management: string | null, accountin
     'kundennummer'
   ];
 
+  const tableHeaderTokens = [
+    'beschreibung',
+    'menge',
+    'einzelpreis',
+    'einzelpreisnetto',
+    'mwst',
+    'ust',
+    'netto',
+    'brutto',
+    'nettobetrag',
+    'bruttobetrag',
+    'gesamtpreis',
+    'summe',
+    'pos',
+    'position'
+  ];
+
   const companyHints = ['gmbh', 'ag', 'kg', 'ohg', 'gbr', 'e.v.', 'ev', 'goma'];
 
   const mgmtNorm = management ? normalize(management) : '';
@@ -156,6 +173,7 @@ function pickVendorFromHeader(text: string, management: string | null, accountin
     .filter((l) => {
       const ll = l.toLowerCase();
       if (blockedTokens.some((t) => ll.includes(t))) return false;
+      if (tableHeaderTokens.some((t) => ll.includes(t))) return false;
       if (mgmtNorm && similarityScore(normalize(l), mgmtNorm) >= 82) return false;
       if (accNorm && similarityScore(normalize(l), accNorm) >= 82) return false;
       return true;
@@ -188,6 +206,8 @@ function scoreVendorCandidatesFromText(text: string) {
   const companyHints = /(gmbh|ag|kg|ohg|gbr|e\.?v\.?|ev|mbh|ug\b)/i;
   const politePhraseRx =
     /(wir bedanken|vielen dank|danke für|für (ihre|deine) anfrage|mit freundlichen grüßen|freundliche grüße|beste grüße|sehr geehrte|hiermit|anbei|bitte beachten)/i;
+  const tableHeaderRx =
+    /(\bbeschreibung\b|\bmenge\b|einzelpreis|\bmwst\b|\bust\b|\bnetto\b|\bbrutto\b|nettobetrag|bruttobetrag|\bgesamtpreis\b|\bpos\b|\bposition\b)/i;
 
   const windows = [head, foot];
   const makeContextFlags = (lines: string[]) => {
@@ -220,6 +240,8 @@ function scoreVendorCandidatesFromText(text: string) {
       const hasSentencePunct = /[,:;!?]/.test(l);
 
       if (politePhraseRx.test(l)) continue;
+
+      if (tableHeaderRx.test(l)) continue;
 
       const lower = l.toLowerCase();
       if (receiverTokens.test(lower)) continue;
@@ -546,6 +568,12 @@ function sanitizeVendor(raw: string) {
   if (!v) return 'UNK';
 
   v = v.replace(/\s+/g, ' ').trim();
+
+  if (
+    /(\bbeschreibung\b|\bmenge\b|einzelpreis|\bmwst\b|\bust\b|\bnetto\b|\bbrutto\b|nettobetrag|bruttobetrag|\bgesamtpreis\b|\bpos\b|\bposition\b)/i.test(v)
+  ) {
+    return 'UNK';
+  }
 
   if (v.split(/\s+/).filter(Boolean).length >= 10) {
     return 'UNK';
