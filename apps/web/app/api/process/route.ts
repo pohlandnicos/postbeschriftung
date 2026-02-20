@@ -185,7 +185,9 @@ function scoreVendorCandidatesFromText(text: string) {
   const vatRx = /(ust\-?id|ust\-?idnr|umsatzsteuer\-?id|vat)\b/i;
   const ibanRx = /\biban\b|\bbic\b/i;
   const receiverTokens = /(verwaltung|hausverwaltung|eigentümergemeinschaft|wohnungseigent|\bweg\b|im auftrag|für die|kundennr|kundennummer)/i;
-  const companyHints = /(gmbh|ag|kg|ohg|gbr|e\.?v\.?|ev|mbh|ug\b|goma)/i;
+  const companyHints = /(gmbh|ag|kg|ohg|gbr|e\.?v\.?|ev|mbh|ug\b)/i;
+  const politePhraseRx =
+    /(wir bedanken|vielen dank|danke für|für (ihre|deine) anfrage|mit freundlichen grüßen|freundliche grüße|beste grüße|sehr geehrte|hiermit|anbei|bitte beachten)/i;
 
   const windows = [head, foot];
   const makeContextFlags = (lines: string[]) => {
@@ -211,23 +213,32 @@ function scoreVendorCandidatesFromText(text: string) {
       const l = lines[i].replace(/\s+/g, ' ').trim();
       if (l.length < 3 || l.length > 80) continue;
 
+      if (politePhraseRx.test(l)) continue;
+
       const lower = l.toLowerCase();
       if (receiverTokens.test(lower)) continue;
 
       const hasHint = companyHints.test(lower);
-      const looksLikeCompany =
-        hasHint ||
-        /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l) ||
-        /[A-ZÄÖÜ][a-zäöü]{2,}/.test(l);
+
+      // Only accept as vendor candidate if it really looks like a sender/company:
+      // - legal form hint OR
+      // - ALL CAPS-ish company line OR
+      // - line near contact/vat/iban context (typical sender blocks)
+      const allCapsish = /^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 .&\-]{6,}$/.test(l);
+      const hasSenderContext = flags[i].contact || flags[i].vat || flags[i].iban;
+      const looksLikeCompany = hasHint || allCapsish || hasSenderContext;
       if (!looksLikeCompany) continue;
+
+      // Avoid selecting lines that are obviously not a company name
+      if (/\bwir\b|\buns\b|\bfür\b|\bihre\b/i.test(l) && !hasHint && !allCapsish) continue;
 
       let score = 0;
       if (hasHint) score += 18;
       score += Math.min(8, Math.floor(l.length / 10));
 
-      if (flags[i].contact) score += 14;
-      if (flags[i].vat) score += 14;
-      if (flags[i].iban) score += 10;
+      if (flags[i].contact) score += 18;
+      if (flags[i].vat) score += 18;
+      if (flags[i].iban) score += 12;
 
       if (/\bangebot\b|\brechnung\b|\blieferschein\b/i.test(l)) score -= 8;
 
@@ -383,8 +394,11 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     'objekt',
     'weg',
     'liegenschaft',
+    'bauvorhaben',
     'baustelle',
     'leistungsort',
+    'leistungsadresse',
+    'objektadresse',
     'adresse',
     'verbrauchsstelle',
     'lieferstelle',
@@ -397,13 +411,38 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
   for (let i = 0; i < lines.length; i++) {
     const ll = lines[i].toLowerCase();
     if (buildingTriggers.some((t) => ll.includes(t))) {
-      const chunk = [lines[i], lines[i + 1] ?? '', lines[i + 2] ?? '']
+      const chunk = [lines[i], lines[i + 1] ?? '', lines[i + 2] ?? '', lines[i + 3] ?? '', lines[i + 4] ?? '']
         .filter(Boolean)
         .join(' ')
         .slice(0, 400);
       building_candidate = chunk;
       building_conf = 0.55;
       break;
+    }
+  }
+
+  if (!building_candidate) {
+    // Fallback: try to find an address-like block near the top (common for offers)
+    const top = lines.slice(0, 70);
+    const zipCityRx = /\b\d{5}\b\s+[A-Za-zÄÖÜäöüß\- ]{2,}/;
+    const streetRx = /(straße|str\.|strasse|weg|allee|platz|gasse|ring|damm|ufer)\b/i;
+
+    let bestAddr: string | null = null;
+    for (let i = 0; i < top.length; i++) {
+      const l = top[i];
+      if (!streetRx.test(l)) continue;
+      const next = top[i + 1] ?? '';
+      const prev = top[i - 1] ?? '';
+      const chunk = [prev, l, next].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      if (zipCityRx.test(chunk)) {
+        bestAddr = chunk.slice(0, 400);
+        break;
+      }
+    }
+
+    if (bestAddr) {
+      building_candidate = bestAddr;
+      building_conf = 0.35;
     }
   }
 
