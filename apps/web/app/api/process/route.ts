@@ -124,6 +124,27 @@ function vendorIsLikelyReceiver(vendor: string, management: string | null, accou
   return false;
 }
 
+function vendorLooksSuspicious(vendor: string) {
+  const v = (vendor ?? '').toString().trim();
+  if (!v) return true;
+  if (v === 'UNK') return true;
+
+  // Table/position headers or line-item descriptions that are frequently at the top of offers/invoices.
+  const tableOrLineItemRx =
+    /(\bbeschreibung\b|\bmenge\b|einzelpreis|\bmwst\b|\bust\b|\bnetto\b|\bbrutto\b|nettobetrag|bruttobetrag|\bgesamtpreis\b|\bpos\b|\bposition\b|\binkl\b|inkl\.|zzgl\.|\bau\s*und\s*abbau\b|\bauf-\s*und\s*abbau\b|\bmontage\b|\bdemontage\b|\bmaterial\b|\barbeitszeit\b|\bstunden\b|\bstk\b|\bm\s?²\b|\bm2\b)/i;
+  if (tableOrLineItemRx.test(v)) return true;
+
+  // Too sentence-like for a vendor name
+  const words = v.split(/\s+/).filter(Boolean);
+  if (words.length >= 8) return true;
+
+  const lowerLetters = (v.match(/[a-zäöüß]/g) ?? []).length;
+  const upperLetters = (v.match(/[A-ZÄÖÜ]/g) ?? []).length;
+  if (lowerLetters > 0 && upperLetters > 0 && lowerLetters / Math.max(1, lowerLetters + upperLetters) > 0.65) return true;
+
+  return false;
+}
+
 function pickVendorFromHeader(text: string, management: string | null, accounting: string | null) {
   const lines = text
     .split(/\r?\n/)
@@ -162,6 +183,17 @@ function pickVendorFromHeader(text: string, management: string | null, accountin
     'position'
   ];
 
+  const lineItemTokens = [
+    'inkl',
+    'zzgl',
+    'aufbau',
+    'abbau',
+    'montage',
+    'demontage',
+    'material',
+    'arbeitszeit'
+  ];
+
   const companyHints = ['gmbh', 'ag', 'kg', 'ohg', 'gbr', 'e.v.', 'ev', 'goma'];
 
   const mgmtNorm = management ? normalize(management) : '';
@@ -174,6 +206,7 @@ function pickVendorFromHeader(text: string, management: string | null, accountin
       const ll = l.toLowerCase();
       if (blockedTokens.some((t) => ll.includes(t))) return false;
       if (tableHeaderTokens.some((t) => ll.includes(t))) return false;
+      if (lineItemTokens.some((t) => ll.includes(t))) return false;
       if (mgmtNorm && similarityScore(normalize(l), mgmtNorm) >= 82) return false;
       if (accNorm && similarityScore(normalize(l), accNorm) >= 82) return false;
       return true;
@@ -208,6 +241,7 @@ function scoreVendorCandidatesFromText(text: string) {
     /(wir bedanken|vielen dank|danke für|für (ihre|deine) anfrage|mit freundlichen grüßen|freundliche grüße|beste grüße|sehr geehrte|hiermit|anbei|bitte beachten)/i;
   const tableHeaderRx =
     /(\bbeschreibung\b|\bmenge\b|einzelpreis|\bmwst\b|\bust\b|\bnetto\b|\bbrutto\b|nettobetrag|bruttobetrag|\bgesamtpreis\b|\bpos\b|\bposition\b)/i;
+  const lineItemRx = /(\binkl\b|inkl\.|zzgl\.|\bau\s*und\s*abbau\b|\bauf-\s*und\s*abbau\b|\bmontage\b|\bdemontage\b|\bmaterial\b|\barbeitszeit\b)/i;
 
   const windows = [head, foot];
   const makeContextFlags = (lines: string[]) => {
@@ -242,6 +276,8 @@ function scoreVendorCandidatesFromText(text: string) {
       if (politePhraseRx.test(l)) continue;
 
       if (tableHeaderRx.test(l)) continue;
+
+      if (lineItemRx.test(l)) continue;
 
       const lower = l.toLowerCase();
       if (receiverTokens.test(lower)) continue;
@@ -575,6 +611,10 @@ function sanitizeVendor(raw: string) {
     return 'UNK';
   }
 
+  if (/(\binkl\b|inkl\.|zzgl\.|\bau\s*und\s*abbau\b|\bauf-\s*und\s*abbau\b|\bmontage\b|\bdemontage\b|\bmaterial\b|\barbeitszeit\b)/i.test(v)) {
+    return 'UNK';
+  }
+
   if (v.split(/\s+/).filter(Boolean).length >= 10) {
     return 'UNK';
   }
@@ -791,8 +831,9 @@ export async function POST(req: Request) {
     let finalVendor = cleanVendor;
     let finalVendorConf = fields.confidence.vendor;
     const vendorLooksWrong = vendorIsLikelyReceiver(finalVendor, matchedManagement, matchedAccounting);
+    const vendorLooksBad = vendorLooksSuspicious(finalVendor);
 
-    if ((vendorLooksWrong || finalVendorConf < 0.5) && page1Received && canUseOpenAI) {
+    if ((vendorLooksWrong || vendorLooksBad || finalVendorConf < 0.5) && page1Received && canUseOpenAI) {
       try {
         const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
         const v = await visionExtractFromImage(imgBytes);
