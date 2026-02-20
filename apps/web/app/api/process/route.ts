@@ -603,7 +603,7 @@ function buildFilename(fields: {
 }) {
   const parts: string[] = [];
   if (fields.object_number) parts.push(fields.object_number);
-  if (fields.date) parts.push(fields.date);
+  if (fields.date) parts.push(fields.date.replace(/\-/g, ''));
   parts.push(fields.doc_type || 'Dokument');
   parts.push(fields.vendor || 'UNK');
   if (typeof fields.amount === 'number') parts.push(fields.amount.toFixed(2).replace('.', ','));
