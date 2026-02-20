@@ -8,6 +8,15 @@ export function ResultCard({ result, embedded }: { result: ProcessResult; embedd
   const score = result.building_match?.score ?? null;
   const lowBuilding = score !== null && score < 90;
   const textLen = typeof result.debug?.text_length === 'number' ? result.debug.text_length : null;
+  const docTypeConf = typeof result.debug?.doc_type_conf === 'number' ? result.debug.doc_type_conf : null;
+  const vendorRaw = typeof result.debug?.vendor_raw === 'string' ? result.debug.vendor_raw : '';
+  const vendorConf = typeof result.debug?.vendor_conf === 'number' ? result.debug.vendor_conf : null;
+  const vendorBefore = typeof result.debug?.vendor_before === 'string' ? result.debug.vendor_before : '';
+  const vendorAfter = typeof result.debug?.vendor_after === 'string' ? result.debug.vendor_after : '';
+  const buildingCandidate = typeof result.debug?.building_candidate === 'string' ? result.debug.building_candidate : '';
+  const buildingScore = typeof result.debug?.building_score === 'number' ? result.debug.building_score : null;
+  const buildingMatchedLabel =
+    typeof result.debug?.building_matched_label === 'string' ? result.debug.building_matched_label : '';
   const buildSha = typeof result.debug?.build_sha === 'string' ? result.debug.build_sha : '';
   const head = typeof result.debug?.head === 'string' ? result.debug.head : '';
   const usedOpenAI = typeof result.debug?.used_openai === 'boolean' ? result.debug.used_openai : false;
@@ -96,6 +105,14 @@ export function ResultCard({ result, embedded }: { result: ProcessResult; embedd
           <Row k="page1_error" v={page1Error} />
           <Row k="page1_ms" v={page1Ms === null ? '' : String(page1Ms)} />
           <Row k="used_openai" v={usedOpenAI ? 'true' : 'false'} />
+          <Row k="doc_type_conf" v={docTypeConf === null ? '' : String(docTypeConf)} />
+          <Row k="vendor_raw" v={vendorRaw} />
+          <Row k="vendor_conf" v={vendorConf === null ? '' : String(vendorConf)} />
+          <Row k="vendor_before" v={vendorBefore} />
+          <Row k="vendor_after" v={vendorAfter} />
+          <Row k="building_candidate" v={buildingCandidate} />
+          <Row k="building_score" v={buildingScore === null ? '' : String(buildingScore)} />
+          <Row k="building_matched_label" v={buildingMatchedLabel} />
           <Row k="build_sha" v={buildSha} />
           <Row k="head" v={head} />
         </div>

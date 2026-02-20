@@ -444,6 +444,7 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
     const top = lines.slice(0, 70);
     const zipCityRx = /\b\d{5}\b\s+[A-Za-zÄÖÜäöüß\- ]{2,}/;
     const streetRx = /(straße|str\.|strasse|weg|allee|platz|gasse|ring|damm|ufer)\b/i;
+    const streetCityRx = /(straße|str\.|strasse|weg|allee|platz|gasse|ring|damm|ufer)\b[^\n]{0,40}[,]\s*[A-Za-zÄÖÜäöüß\- ]{2,}/i;
 
     let bestAddr: string | null = null;
     for (let i = 0; i < top.length; i++) {
@@ -452,7 +453,7 @@ function extractFields(text: string, vendorMap: Record<string, string>) {
       const next = top[i + 1] ?? '';
       const prev = top[i - 1] ?? '';
       const chunk = [prev, l, next].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      if (zipCityRx.test(chunk)) {
+      if (zipCityRx.test(chunk) || streetCityRx.test(chunk)) {
         bestAddr = chunk.slice(0, 400);
         break;
       }
@@ -715,8 +716,44 @@ export async function POST(req: Request) {
         }
       };
     }
-    const cleanVendor = sanitizeVendor(fields.vendor);
-    const building_match = matchBuilding(fields.building_candidate, objects);
+
+    let cleanVendor = sanitizeVendor(fields.vendor);
+    if (cleanVendor === 'UNK') {
+      const headerPick = pickVendorFromHeader(text, null, null);
+      if (headerPick) {
+        cleanVendor = sanitizeVendor(headerPick);
+        if (cleanVendor !== 'UNK') {
+          fields = {
+            ...fields,
+            vendor: headerPick,
+            confidence: { ...fields.confidence, vendor: Math.max(fields.confidence.vendor, 0.75) }
+          };
+        }
+      }
+    }
+
+    let building_match = matchBuilding(fields.building_candidate, objects);
+    if (!building_match.object_number && page1Received && canUseOpenAI) {
+      try {
+        const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const v = await visionExtractFromImage(imgBytes);
+        if (v.building_candidate) {
+          const candidate = v.building_candidate;
+          const retry = matchBuilding(candidate, objects);
+          if (retry.object_number || (retry.score ?? 0) > (building_match.score ?? 0)) {
+            usedOpenAI = true;
+            fields = {
+              ...fields,
+              building_candidate: candidate,
+              confidence: { ...fields.confidence, building: Math.max(fields.confidence.building, 0.75) }
+            };
+            building_match = retry;
+          }
+        }
+      } catch {
+        // ignore vision errors
+      }
+    }
     const matchedObject = building_match.object_number
       ? (objects as any[]).find((o) => String(o.object_number) === String(building_match.object_number))
       : null;
