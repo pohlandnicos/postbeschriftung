@@ -18,10 +18,25 @@ export async function processPdf(
     form.append('page1_ms', String(page1Ms));
   }
 
-  const res = await fetch('/api/process', {
-    method: 'POST',
-    body: form
-  });
+  const controller = new AbortController();
+  const timeoutMs = 75_000;
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch('/api/process', {
+      method: 'POST',
+      body: form,
+      signal: controller.signal
+    });
+  } catch (e) {
+    const aborted = e instanceof DOMException && e.name === 'AbortError';
+    if (aborted) {
+      throw new Error(`Timeout: Verarbeitung dauert länger als ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
 
   if (!res.ok) {
     const msg = await res.text().catch(() => '');

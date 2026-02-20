@@ -750,6 +750,7 @@ async function visionExtractFromImage(imageBytes: Uint8Array): Promise<VisionExt
 
 export async function POST(req: Request) {
   try {
+    const startedAt = Date.now();
     const form = await req.formData();
     const file = form.get('file');
     const page1 = form.get('page1');
@@ -767,15 +768,26 @@ export async function POST(req: Request) {
 
     const id = crypto.randomUUID();
 
+    const pdfParseStart = Date.now();
     const parsed = await pdfParse(bytes);
+    const pdf_parse_ms = Date.now() - pdfParseStart;
     const text = (parsed?.text ?? '').toString();
     const pages = typeof (parsed as any)?.numpages === 'number' ? ((parsed as any).numpages as number) : null;
 
+    const vendorMapStart = Date.now();
     const vendorMap = await loadVendorMap();
+    const vendor_map_ms = Date.now() - vendorMapStart;
+
+    const objectsStart = Date.now();
     const objects = await loadObjects();
+    const objects_ms = Date.now() - objectsStart;
 
     const textLen = text.trim().length;
     let usedOpenAI = false;
+
+    let vision_ms_primary: number | null = null;
+    let vision_ms_building: number | null = null;
+    let vision_ms_vendor: number | null = null;
 
     let fields = extractFields(text, vendorMap);
     const canUseOpenAI = Boolean(process.env.OPENAI_API_KEY);
@@ -787,7 +799,9 @@ export async function POST(req: Request) {
     if (textLen < 200 && page1Received && canUseOpenAI) {
       try {
         const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const visionStart = Date.now();
         const v = await visionExtractFromImage(imgBytes);
+        vision_ms_primary = Date.now() - visionStart;
         usedOpenAI = true;
 
         fields = {
@@ -830,7 +844,9 @@ export async function POST(req: Request) {
     if (!building_match.object_number && page1Received && canUseOpenAI) {
       try {
         const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const visionStart = Date.now();
         const v = await visionExtractFromImage(imgBytes);
+        vision_ms_building = Date.now() - visionStart;
         if (v.building_candidate) {
           const candidate = v.building_candidate;
           const retry = matchBuilding(candidate, objects);
@@ -862,7 +878,9 @@ export async function POST(req: Request) {
     if ((vendorLooksWrong || vendorLooksBad || finalVendorConf < 0.5) && page1Received && canUseOpenAI) {
       try {
         const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const visionStart = Date.now();
         const v = await visionExtractFromImage(imgBytes);
+        vision_ms_vendor = Date.now() - visionStart;
         usedOpenAI = true;
         if (v.vendor) {
           const vv = sanitizeVendor(v.vendor);
@@ -942,13 +960,16 @@ export async function POST(req: Request) {
     const supabase = getSupabaseAdmin();
     const storagePath = `original/${result.file_id}.pdf`;
 
+    const storageStart = Date.now();
     const up = await supabase.storage
       .from('pdfs')
       .upload(storagePath, Buffer.from(bytes), { contentType: 'application/pdf', upsert: true });
+    const storage_ms = Date.now() - storageStart;
     if (up.error) {
       return new NextResponse(`Storage upload failed: ${up.error.message}`, { status: 500 });
     }
 
+    const dbStart = Date.now();
     const ins = await supabase.from('documents').insert({
       id: result.file_id,
       tenant_id: tenantId,
@@ -970,9 +991,23 @@ export async function POST(req: Request) {
       confidence: result.confidence,
       debug: result.debug ?? null
     });
+    const db_ms = Date.now() - dbStart;
     if (ins.error) {
       return new NextResponse(`DB insert failed: ${ins.error.message}`, { status: 500 });
     }
+
+    const total_ms = Date.now() - startedAt;
+    const debug = (result.debug ?? {}) as Record<string, unknown>;
+    debug.pdf_parse_ms = pdf_parse_ms;
+    debug.vendor_map_ms = vendor_map_ms;
+    debug.objects_ms = objects_ms;
+    if (typeof vision_ms_primary === 'number') debug.vision_ms_primary = vision_ms_primary;
+    if (typeof vision_ms_building === 'number') debug.vision_ms_building = vision_ms_building;
+    if (typeof vision_ms_vendor === 'number') debug.vision_ms_vendor = vision_ms_vendor;
+    debug.storage_ms = storage_ms;
+    debug.db_ms = db_ms;
+    debug.total_ms = total_ms;
+    result.debug = debug;
 
     return NextResponse.json({ ...result, file_id: result.file_id, pages });
   } catch (e) {
