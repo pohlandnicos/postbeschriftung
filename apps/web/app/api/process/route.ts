@@ -707,12 +707,20 @@ async function visionExtractFromImage(imageBytes: Uint8Array): Promise<VisionExt
   });
 
   const content = resp.choices?.[0]?.message?.content ?? '';
-  let obj: any = {};
-  try {
-    obj = JSON.parse(content);
-  } catch {
+  const safeJsonParse = (s: string) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
+    }
+  };
+
+  let obj: any = safeJsonParse(content) ?? {};
+  if (!obj || typeof obj !== 'object') obj = {};
+  if (Object.keys(obj).length === 0) {
     const m = content.match(/\{[\s\S]*\}/);
-    if (m?.[0]) obj = JSON.parse(m[0]);
+    const parsed = m?.[0] ? safeJsonParse(m[0]) : null;
+    if (parsed && typeof parsed === 'object') obj = parsed;
   }
 
   return {
@@ -763,26 +771,30 @@ export async function POST(req: Request) {
     const page1MsNum = typeof page1Ms === 'string' ? Number.parseFloat(page1Ms) : null;
 
     if (textLen < 200 && page1Received && canUseOpenAI) {
-      const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
-      const v = await visionExtractFromImage(imgBytes);
-      usedOpenAI = true;
+      try {
+        const imgBytes = new Uint8Array(await (page1 as File).arrayBuffer());
+        const v = await visionExtractFromImage(imgBytes);
+        usedOpenAI = true;
 
-      fields = {
-        ...fields,
-        doc_type: v.doc_type ?? fields.doc_type,
-        vendor: v.vendor ?? fields.vendor,
-        amount: v.amount ?? fields.amount,
-        currency: v.currency ?? fields.currency,
-        date: v.date ?? fields.date,
-        building_candidate: v.building_candidate ?? fields.building_candidate,
-        confidence: {
-          doc_type: v.doc_type ? 0.85 : fields.confidence.doc_type,
-          vendor: v.vendor ? 0.85 : fields.confidence.vendor,
-          amount: typeof v.amount === 'number' ? 0.85 : fields.confidence.amount,
-          building: v.building_candidate ? 0.75 : fields.confidence.building,
-          date: v.date ? 0.75 : (fields.confidence as any).date
-        }
-      };
+        fields = {
+          ...fields,
+          doc_type: v.doc_type ?? fields.doc_type,
+          vendor: v.vendor ?? fields.vendor,
+          amount: v.amount ?? fields.amount,
+          currency: v.currency ?? fields.currency,
+          date: v.date ?? fields.date,
+          building_candidate: v.building_candidate ?? fields.building_candidate,
+          confidence: {
+            doc_type: v.doc_type ? 0.85 : fields.confidence.doc_type,
+            vendor: v.vendor ? 0.85 : fields.confidence.vendor,
+            amount: typeof v.amount === 'number' ? 0.85 : fields.confidence.amount,
+            building: v.building_candidate ? 0.75 : fields.confidence.building,
+            date: v.date ? 0.75 : (fields.confidence as any).date
+          }
+        };
+      } catch {
+        // ignore vision errors
+      }
     }
 
     let cleanVendor = sanitizeVendor(fields.vendor);
